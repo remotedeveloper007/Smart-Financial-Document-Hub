@@ -1,0 +1,38 @@
+name: ClamAV Integration
+
+on:
+  push: {}
+  pull_request: {}
+
+jobs:
+  clamav-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Compose
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker-compose
+
+      - name: Start ClamAV service
+        run: |
+          docker-compose -f docker-compose.clamav.yml up -d
+
+      - name: Wait for ClamAV to be ready
+        run: |
+          for i in {1..30}; do
+            if nc -z localhost 3310; then
+              echo "clamd is ready" && break
+            fi
+            sleep 1
+          done
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Run Integration tests (ClamAV)
+        run: php artisan test --parallel --testsuite=Feature --filter=Scan
+        env:
+          APP_ENV: testing
+          CLAMAV_ENABLED: 'true'

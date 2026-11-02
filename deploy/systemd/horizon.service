@@ -1,0 +1,16 @@
+[Unit]
+Description=Laravel Horizon
+After=network.target redis.service mysql.service
+
+[Service]
+User=www-data
+Group=www-data
+Restart=always
+ExecStart=/usr/bin/php /var/www/html/artisan horizon
+
+# Adjust these limits for your environment
+LimitNOFILE=65536
+LimitNPROC=4096
+
+[Install]
+WantedBy=multi-user.target

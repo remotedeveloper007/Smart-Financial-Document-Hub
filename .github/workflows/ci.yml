@@ -1,0 +1,106 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  backend-frontend:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - database: mysql
+            db_connection: mysql
+            db_port: 3306
+          - database: postgres
+            db_connection: pgsql
+            db_port: 5432
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_DATABASE: smart_financial_document_hub_test
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: smart_financial_document_hub_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      APP_ENV: testing
+      DB_CONNECTION: ${{ matrix.db_connection }}
+      DB_HOST: 127.0.0.1
+      DB_PORT: ${{ matrix.db_port }}
+      DB_DATABASE: smart_financial_document_hub_test
+      DB_USERNAME: ${{ matrix.database == 'mysql' && 'root' || 'postgres' }}
+      DB_PASSWORD: ${{ matrix.database == 'mysql' && 'root' || 'postgres' }}
+      CACHE_STORE: array
+      QUEUE_CONNECTION: sync
+      SESSION_DRIVER: array
+      MAIL_MAILER: array
+      CLAMAV_ENABLED: 'false'
+      DOCUMENT_EXTRACTION_DRIVER: simulated
+      AI_DRIVER: simulated
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up PHP 8.4
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, bcmath, ctype, fileinfo, intl, pdo_mysql, pdo_pgsql
+          coverage: none
+          tools: composer:v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Prepare Laravel application
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Run backend tests against ${{ matrix.database }}
+        run: php artisan test
+
+      - name: Run frontend unit tests
+        run: npm run test:unit -- --run
+
+      - name: Build production frontend assets
+        run: npm run build
+
+      - name: Audit Composer dependencies
+        run: composer audit --no-interaction
+
+      - name: Audit npm dependencies
+        run: npm audit --audit-level=high

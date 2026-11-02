@@ -1,0 +1,13 @@
+version: '3.8'
+services:
+  clamav:
+    image: mkodockx/docker-clamav:alpine
+    container_name: sfdh-clamav
+    ports:
+      - "3310:3310"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "bash", "-lc", "clamdscan --version || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5

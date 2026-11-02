@@ -1,0 +1,16 @@
+[Unit]
+Description=Laravel Queue Worker (database)
+After=network.target mysql.service
+
+[Service]
+User=www-data
+Group=www-data
+Restart=always
+ExecStart=/usr/bin/php /var/www/html/artisan queue:work database --sleep=3 --tries=3 --queue=default,high,ocr,exports
+
+# Tune for host resources
+LimitNOFILE=65536
+LimitNPROC=4096
+
+[Install]
+WantedBy=multi-user.target
