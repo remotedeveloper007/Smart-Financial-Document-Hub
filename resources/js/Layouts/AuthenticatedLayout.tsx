@@ -383,7 +383,7 @@ export default function Authenticated({
                 </div>
             </aside>
 
-            <header className="hidden h-16 items-center justify-end border-b border-slate-200 bg-white px-6 dark:border-slate-800 dark:bg-slate-900 lg:flex">
+            <header className="sticky top-0 z-40 hidden h-16 items-center justify-end border-b border-slate-200 bg-white px-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 lg:flex">
                 <AppearanceToggle
                     theme={theme}
                     onToggle={() =>
@@ -395,7 +395,7 @@ export default function Authenticated({
             </header>
 
             {/* Keep the existing responsive top navigation for small screens; desktop users use the sidebar above. */}
-            <nav className="border-b border-gray-100 bg-white dark:border-slate-800 dark:bg-slate-900 lg:hidden">
+            <nav className="sticky top-0 z-40 border-b border-gray-100 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 lg:hidden">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     <div className="flex h-16 justify-between">
                         <div className="flex">
@@ -728,7 +728,7 @@ export default function Authenticated({
 
             {/* Optional header slot: pages pass `header` to render page title/actions */}
             {header && (
-                <header className="bg-white shadow dark:bg-slate-900">
+                <header className="bg-white shadow dark:bg-slate-900 lg:sticky lg:top-16 lg:z-30">
                     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
                         {header}
                     </div>

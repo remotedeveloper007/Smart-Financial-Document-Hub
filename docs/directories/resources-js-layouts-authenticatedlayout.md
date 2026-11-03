@@ -27,6 +27,8 @@ This file draws the shared page frame for signed-in users. It contains the deskt
 
 - An expanded or icon-only desktop sidebar.
 - A responsive navigation menu for narrow screens.
+- A navigation header that remains at the top while the page scrolls.
+- A sticky optional page-title header on desktop, stacked below the navigation bar.
 - A light or dark color theme.
 - The page header and page content.
 
@@ -44,7 +46,9 @@ This file draws the shared page frame for signed-in users. It contains the deskt
 10. The theme effect sets `data-theme` on the root `<html>` element and saves the new value. The CSS file uses this attribute to style the shared shell and common page surfaces.
 11. `AppearanceToggle` displays a moon or sun icon and says which mode it will switch to. Its `aria-pressed` value tells assistive technology whether dark mode is active.
 12. The desktop has a theme button in the top bar. The mobile navigation row has a matching button that changes the same layout state.
-13. The existing small-screen menu and its links are kept. Its open/close button now also reports its state to assistive technology.
+13. The desktop bar and mobile navigation use `sticky top-0` with a higher stacking order so they remain visible during page scrolling.
+14. The optional page-title header sticks below the desktop bar at `top-16`. It stays in normal document flow on small screens so an expanded mobile menu is not covered by the title.
+15. The existing small-screen menu and its links are kept. Its open/close button now also reports its state to assistive technology.
 
 ## Important component responsibilities
 
