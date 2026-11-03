@@ -8,3 +8,49 @@
 @theme {
 	--font-sans: Figtree, ui-sans-serif, system-ui, sans-serif;
 }
+
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+
+html[data-theme='dark'] {
+	color-scheme: dark;
+	background-color: #020617;
+}
+
+html[data-theme='dark'] body {
+	background-color: #020617;
+	color: #e2e8f0;
+}
+
+html[data-theme='dark'] [class~='bg-white'],
+html[data-theme='dark'] [class~='bg-gray-50'],
+html[data-theme='dark'] [class~='bg-gray-100'],
+html[data-theme='dark'] [class~='bg-slate-50'],
+html[data-theme='dark'] [class~='bg-slate-100'] {
+	background-color: #1e293b;
+}
+
+html[data-theme='dark'] [class~='text-gray-900'],
+html[data-theme='dark'] [class~='text-gray-800'],
+html[data-theme='dark'] [class~='text-slate-900'],
+html[data-theme='dark'] [class~='text-slate-800'] {
+	color: #f1f5f9;
+}
+
+html[data-theme='dark'] [class~='text-gray-700'],
+html[data-theme='dark'] [class~='text-gray-600'],
+html[data-theme='dark'] [class~='text-slate-700'],
+html[data-theme='dark'] [class~='text-slate-600'] {
+	color: #cbd5e1;
+}
+
+html[data-theme='dark'] [class~='text-gray-500'],
+html[data-theme='dark'] [class~='text-slate-500'] {
+	color: #94a3b8;
+}
+
+html[data-theme='dark'] [class~='border-gray-100'],
+html[data-theme='dark'] [class~='border-gray-200'],
+html[data-theme='dark'] [class~='border-slate-100'],
+html[data-theme='dark'] [class~='border-slate-200'] {
+	border-color: #334155;
+}

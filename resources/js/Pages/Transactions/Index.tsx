@@ -27,20 +27,22 @@ export default function Index({ transactions }: Props) {
 
             <div className="py-12">
                 <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
-                    <div className="overflow-hidden rounded-lg bg-white shadow-sm">
-                        <div className="px-6 py-4">
+                    <div className="overflow-hidden rounded-lg bg-white shadow-sm border-t-4 border-t-blue-500">
+                        {/* <div className="px-6 py-4">
                             <h3 className="text-lg font-semibold">Recently extracted transactions</h3>
                             <p className="mt-2 text-sm text-gray-600">
                                 This page shows the latest transactions extracted from uploaded documents.
                             </p>
-                        </div>
+                        </div> */}
                         <div className="border-t border-gray-200 px-6 py-4">
                             <div className="flex flex-wrap items-center justify-between gap-3">
                                 <div>
-                                    <h3 className="text-lg font-semibold">Recently extracted transactions</h3>
-                                    <p className="mt-2 text-sm text-gray-600">
+                                    <h3 className="text-lg font-semibold">Recently extracted transactions <span className="mt-2 text-sm text-gray-600">
+                                        (This page shows the latest transactions extracted from uploaded documents.)
+                                    </span></h3>
+                                    {/* <p className="mt-2 text-sm text-gray-600">
                                         This page shows the latest transactions extracted from uploaded documents.
-                                    </p>
+                                    </p> */}
                                 </div>
                                 <div>
                                     <a
