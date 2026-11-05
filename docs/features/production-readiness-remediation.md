@@ -9,8 +9,8 @@ Record the release-blocker fixes made after the repository-wide implementation a
 - Registered routes for document upload/list, team member management, transaction listing/export, search, and audit log pages/endpoints.
 - Registration now delegates to `RegisterUserAction`, which creates the user, primary team, membership, default roles, and owner assignment in one database transaction.
 - Added missing view permissions to the default role matrix for invoices, receipts, contracts, and transactions.
-- Added a `view_audit_logs` permission and policy. Audit list/page routes now authorize before reading tenant records.
-- Queue status endpoints are restricted to admin users and queue navigation links are only displayed to admin users.
+- System audit logs, health, fault logs, queue monitoring, and Horizon are restricted to verified platform administrators configured through `SYSTEM_ADMIN_EMAILS`; tenant Owner/Admin roles cannot access these application-wide surfaces.
+- System audit log queries are application-wide only after policy authorization and include team context for operator investigations.
 - Integration credentials use Laravel encrypted-array casting and are hidden from JSON serialization. A migration converts old plaintext JSON to encrypted values; preserve `APP_KEY` and take a verified backup before production deployment.
 - Sample extraction keys for transactions, invoices, receipts, and contracts are deterministic per document/source record so retries target stable identifiers.
 - Tenant/date index migration now uses Laravel schema operations; a duplicate audit-log index was removed because the table migration already owns it.

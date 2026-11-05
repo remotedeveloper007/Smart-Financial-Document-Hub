@@ -28,7 +28,6 @@ class Permission extends Model
     public const PERMISSION_MANAGE_INTEGRATIONS = 'manage_integrations';
     public const PERMISSION_USE_AI = 'use_ai';
     public const PERMISSION_MANAGE_AI_SETTINGS = 'manage_ai_settings';
-    public const PERMISSION_VIEW_AUDIT_LOGS = 'view_audit_logs';
 
     public static function defaultPermissions(): array
     {
@@ -49,7 +48,6 @@ class Permission extends Model
             self::PERMISSION_MANAGE_INTEGRATIONS => 'Manage integrations',
             self::PERMISSION_USE_AI => 'Use AI assistant',
             self::PERMISSION_MANAGE_AI_SETTINGS => 'Manage AI provider settings',
-            self::PERMISSION_VIEW_AUDIT_LOGS => 'View audit logs',
         ];
     }
 

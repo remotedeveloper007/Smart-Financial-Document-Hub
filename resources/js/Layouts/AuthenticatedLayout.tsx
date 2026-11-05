@@ -166,6 +166,7 @@ type AuthenticatedPageProps = {
         };
     };
     can?: {
+        isPlatformAdmin?: boolean;
         viewAdmin?: boolean;
         permissions?: string[];
     };
@@ -179,6 +180,7 @@ export default function Authenticated({
     // const props = usePage().props;
     const props = usePage<AuthenticatedPageProps>().props;
     const user = props.auth?.user;
+    const isPlatformAdmin = props.can?.isPlatformAdmin ?? false;
     const canViewAdmin = props.can?.viewAdmin ?? false;
     const permissions = new Set(props.can?.permissions ?? []);
     const can = (permission: string) => permissions.has(permission);
@@ -191,7 +193,7 @@ export default function Authenticated({
     const canManageIntegrations = can('manage_integrations');
     const canManageBilling = can('manage_billing');
     const canUseAi = can('use_ai');
-    const canViewAuditLogs = can('view_audit_logs');
+    const canViewSystemAuditLogs = canViewAdmin;
 
     // Keep these display preferences in the browser so they follow the user between page visits.
     const [showingNavigationDropdown, setShowingNavigationDropdown] =
@@ -300,35 +302,41 @@ export default function Authenticated({
                         sidebarCollapsed ? 'px-3' : 'px-4'
                     }`}
                 >
-                    <NavigationSection title="Workspace" collapsed={sidebarCollapsed}>
-                        <SidebarLink href={route('dashboard')} label="Dashboard" icon="dashboard" active={route().current('dashboard')} collapsed={sidebarCollapsed} />
-                        {canManageUsers && <SidebarLink href={route('team.members.page')} label="Team Members" icon="team" active={route().current('team.members.*')} collapsed={sidebarCollapsed} />}
-                    </NavigationSection>
+                    {!isPlatformAdmin && (
+                        <>
+                            <NavigationSection title="Workspace" collapsed={sidebarCollapsed}>
+                                <SidebarLink href={route('dashboard')} label="Dashboard" icon="dashboard" active={route().current('dashboard')} collapsed={sidebarCollapsed} />
+                                {canManageUsers && <SidebarLink href={route('team.members.page')} label="Team Members" icon="team" active={route().current('team.members.*')} collapsed={sidebarCollapsed} />}
+                            </NavigationSection>
 
-                    {(canCreateDocuments || canViewTransactions || canViewInvoices || canViewReceipts || canViewContracts) && (
-                        <NavigationSection title="Financial data" collapsed={sidebarCollapsed}>
-                            {canCreateDocuments && <SidebarLink href={route('documents.upload')} label="Documents" icon="documents" active={route().current('documents.*')} collapsed={sidebarCollapsed} />}
-                            {canViewTransactions && <SidebarLink href={route('transactions.index')} label="Transactions" icon="transactions" active={route().current('transactions.*')} collapsed={sidebarCollapsed} />}
-                            {canViewTransactions && <SidebarLink href={route('search.page')} label="Search" icon="search" active={route().current('search.*')} collapsed={sidebarCollapsed} />}
-                            {canViewInvoices && <SidebarLink href={route('invoices.page')} label="Invoices" icon="invoices" active={route().current('invoices.*')} collapsed={sidebarCollapsed} />}
-                            {canViewReceipts && <SidebarLink href={route('receipts.page')} label="Receipts" icon="receipts" active={route().current('receipts.*')} collapsed={sidebarCollapsed} />}
-                            {canViewContracts && <SidebarLink href={route('contracts.page')} label="Contracts" icon="contracts" active={route().current('contracts.*')} collapsed={sidebarCollapsed} />}
-                        </NavigationSection>
-                    )}
+                            {(canCreateDocuments || canViewTransactions || canViewInvoices || canViewReceipts || canViewContracts) && (
+                                <NavigationSection title="Financial data" collapsed={sidebarCollapsed}>
+                                    {canCreateDocuments && <SidebarLink href={route('documents.upload')} label="Documents" icon="documents" active={route().current('documents.*')} collapsed={sidebarCollapsed} />}
+                                    {canViewTransactions && <SidebarLink href={route('transactions.index')} label="Transactions" icon="transactions" active={route().current('transactions.*')} collapsed={sidebarCollapsed} />}
+                                    {canViewTransactions && <SidebarLink href={route('search.page')} label="Search" icon="search" active={route().current('search.*')} collapsed={sidebarCollapsed} />}
+                                    {canViewInvoices && <SidebarLink href={route('invoices.page')} label="Invoices" icon="invoices" active={route().current('invoices.*')} collapsed={sidebarCollapsed} />}
+                                    {canViewReceipts && <SidebarLink href={route('receipts.page')} label="Receipts" icon="receipts" active={route().current('receipts.*')} collapsed={sidebarCollapsed} />}
+                                    {canViewContracts && <SidebarLink href={route('contracts.page')} label="Contracts" icon="contracts" active={route().current('contracts.*')} collapsed={sidebarCollapsed} />}
+                                </NavigationSection>
+                            )}
 
-                    {(canManageIntegrations || canManageBilling || canUseAi || canViewAuditLogs) && (
-                        <NavigationSection title="Tools" collapsed={sidebarCollapsed}>
-                            {canManageIntegrations && <SidebarLink href={route('integrations.page')} label="Integrations" icon="integrations" active={route().current('integrations.*')} collapsed={sidebarCollapsed} />}
-                            {canManageBilling && <SidebarLink href={route('billing.page')} label="Billing" icon="billing" active={route().current('billing.*')} collapsed={sidebarCollapsed} />}
-                            {canUseAi && <SidebarLink href={route('ai.page')} label="AI Assistant" icon="ai" active={route().current('ai.*')} collapsed={sidebarCollapsed} />}
-                            {canViewAuditLogs && <SidebarLink href={route('audit.logs.page')} label="Audit Logs" icon="audit" active={route().current('audit.logs.*')} collapsed={sidebarCollapsed} />}
-                        </NavigationSection>
+                            {(canManageIntegrations || canManageBilling || canUseAi) && (
+                                <NavigationSection title="Tools" collapsed={sidebarCollapsed}>
+                                    {canManageIntegrations && <SidebarLink href={route('integrations.page')} label="Integrations" icon="integrations" active={route().current('integrations.*')} collapsed={sidebarCollapsed} />}
+                                    {canManageBilling && <SidebarLink href={route('billing.page')} label="Billing" icon="billing" active={route().current('billing.*')} collapsed={sidebarCollapsed} />}
+                                    {canUseAi && <SidebarLink href={route('ai.page')} label="AI Assistant" icon="ai" active={route().current('ai.*')} collapsed={sidebarCollapsed} />}
+                                </NavigationSection>
+                            )}
+                        </>
                     )}
 
                     {canViewAdmin && (
                         <NavigationSection title="Administration" collapsed={sidebarCollapsed}>
                             <SidebarLink href={route('admin.system_health.index')} label="System Health" icon="system" active={route().current('admin.system_health.*')} collapsed={sidebarCollapsed} />
                             <SidebarLink href={route('queue.status.page')} label="Queue Monitor" icon="queue" active={route().current('queue.*')} collapsed={sidebarCollapsed} />
+                            <SidebarLink href={route('admin.fault_logs.index')} label="Fault Logs" icon="system" active={route().current('admin.fault_logs.*')} collapsed={sidebarCollapsed} />
+                            <SidebarLink href={route('admin.failed_jobs.index')} label="Failed Jobs" icon="queue" active={route().current('admin.failed_jobs.*')} collapsed={sidebarCollapsed} />
+                            <SidebarLink href={route('audit.logs.page')} label="System Audit Logs" icon="audit" active={route().current('audit.logs.*')} collapsed={sidebarCollapsed} />
                         </NavigationSection>
                     )}
                 </nav>
@@ -407,75 +415,76 @@ export default function Authenticated({
 
                             {/* Desktop primary nav links (hidden on small screens) */}
                             <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                                <NavLink
-                                    href={route('dashboard')}
-                                    active={route().current('dashboard')}
-                                >
-                                    Dashboard
-                                </NavLink>
-                                {canViewAdmin && (
+                                {isPlatformAdmin ? (
                                     <NavLink
                                         href={route('admin.system_health.index')}
                                         active={route().current('admin.system_health.index')}
                                     >
                                         System Health
                                     </NavLink>
+                                ) : (
+                                    <NavLink
+                                        href={route('dashboard')}
+                                        active={route().current('dashboard')}
+                                    >
+                                        Dashboard
+                                    </NavLink>
                                 )}
-                                {canManageUsers && <NavLink
+                                {!isPlatformAdmin && canManageUsers && <NavLink
                                     href={route('team.members.page')}
                                     active={route().current('team.members.page')}
                                 >
                                     Team Members
                                 </NavLink>}
-                                {canCreateDocuments && <NavLink
+                                {!isPlatformAdmin && canCreateDocuments && <NavLink
                                     href={route('documents.upload')}
                                     active={route().current('documents.upload')}
                                 >
                                     Documents
                                 </NavLink>}
-                                {canViewTransactions && <NavLink
+                                {!isPlatformAdmin && canViewTransactions && <NavLink
                                     href={route('transactions.index')}
                                     active={route().current('transactions.index')}
                                 >
                                     Transactions
                                 </NavLink>}
-                                {canViewTransactions && <NavLink
+                                {!isPlatformAdmin && canViewTransactions && <NavLink
                                     href={route('search.page')}
                                     active={route().current('search.page')}
                                 >
                                     Search
                                 </NavLink>}
-                                {canViewInvoices && <NavLink
+                                {!isPlatformAdmin && canViewInvoices && <NavLink
                                     href={route('invoices.page')}
                                     active={route().current('invoices.page')}
                                 >
                                     Invoices
                                 </NavLink>}
-                                {canManageBilling && <NavLink
+                                {!isPlatformAdmin && canManageBilling && <NavLink
                                     href={route('billing.page')}
                                     active={route().current('billing.page')}
                                 >
                                     Billing
                                 </NavLink>}
-                                {canViewReceipts && <NavLink
+                                {!isPlatformAdmin && canViewReceipts && <NavLink
                                     href={route('receipts.page')}
                                     active={route().current('receipts.page')}
                                 >
                                     Receipts
                                 </NavLink>}
-                                {canViewContracts && <NavLink
+                                {!isPlatformAdmin && canViewContracts && <NavLink
                                     href={route('contracts.page')}
                                     active={route().current('contracts.page')}
                                 >
                                     Contracts
                                 </NavLink>}
-                                {canManageIntegrations && <NavLink
+                                {!isPlatformAdmin && canManageIntegrations && <NavLink
                                     href={route('integrations.page')}
                                     active={route().current('integrations.page')}
                                 >
                                     Integrations
                                 </NavLink>}
-                                {canViewAdmin && (
+                                {canViewAdmin && !isPlatformAdmin && (
                                     <NavLink
                                         href={route('queue.status.page')}
                                         active={route().current('queue.status.page')}
@@ -483,17 +492,25 @@ export default function Authenticated({
                                         Queue Monitor
                                     </NavLink>
                                 )}
-                                {canUseAi && <NavLink
+                                {!isPlatformAdmin && canUseAi && <NavLink
                                     href={route('ai.page')}
                                     active={route().current('ai.page')}
                                 >
                                     AI Assistant
                                 </NavLink>}
-                                {canViewAuditLogs && <NavLink
+                                {isPlatformAdmin && (
+                                    <>
+                                        <NavLink href={route('queue.status.page')} active={route().current('queue.status.page')}>Queue Monitor</NavLink>
+                                        <NavLink href={route('admin.fault_logs.index')} active={route().current('admin.fault_logs.*')}>Fault Logs</NavLink>
+                                        <NavLink href={route('admin.failed_jobs.index')} active={route().current('admin.failed_jobs.*')}>Failed Jobs</NavLink>
+                                        <NavLink href={route('audit.logs.page')} active={route().current('audit.logs.*')}>System Audit Logs</NavLink>
+                                    </>
+                                )}
+                                {!isPlatformAdmin && canViewSystemAuditLogs && <NavLink
                                     href={route('audit.logs.page')}
                                     active={route().current('audit.logs.page')}
                                 >
-                                    Audit Logs
+                                    System Audit Logs
                                 </NavLink>}
                             </div>
                         </div>
@@ -609,19 +626,28 @@ export default function Authenticated({
                 >
                     {/* Mobile nav (collapsed by default) - mirrors desktop links */}
                     <div className="space-y-1 pb-3 pt-2">
-                        <ResponsiveNavLink
-                            href={route('dashboard')}
-                            active={route().current('dashboard')}
-                        >
-                            Dashboard
-                        </ResponsiveNavLink>
-                        {canManageUsers && <ResponsiveNavLink
+                        {isPlatformAdmin ? (
+                            <ResponsiveNavLink
+                                href={route('admin.system_health.index')}
+                                active={route().current('admin.system_health.index')}
+                            >
+                                System Health
+                            </ResponsiveNavLink>
+                        ) : (
+                            <ResponsiveNavLink
+                                href={route('dashboard')}
+                                active={route().current('dashboard')}
+                            >
+                                Dashboard
+                            </ResponsiveNavLink>
+                        )}
+                        {!isPlatformAdmin && canManageUsers && <ResponsiveNavLink
                             href={route('team.members.page')}
                             active={route().current('team.members.page')}
                         >
                             Team Members
                         </ResponsiveNavLink>}
-                        {canViewAdmin && (
+                        {canViewAdmin && !isPlatformAdmin && (
                             <ResponsiveNavLink
                                 href={route('admin.system_health.index')}
                                 active={route().current('admin.system_health.index')}
@@ -629,55 +655,55 @@ export default function Authenticated({
                                 System Health
                             </ResponsiveNavLink>
                         )}
-                        {canCreateDocuments && <ResponsiveNavLink
+                        {!isPlatformAdmin && canCreateDocuments && <ResponsiveNavLink
                             href={route('documents.upload')}
                             active={route().current('documents.upload')}
                         >
                             Documents
                         </ResponsiveNavLink>}
-                        {canViewTransactions && <ResponsiveNavLink
+                        {!isPlatformAdmin && canViewTransactions && <ResponsiveNavLink
                             href={route('transactions.index')}
                             active={route().current('transactions.index')}
                         >
                             Transactions
                         </ResponsiveNavLink>}
-                        {canViewTransactions && <ResponsiveNavLink
+                        {!isPlatformAdmin && canViewTransactions && <ResponsiveNavLink
                             href={route('search.page')}
                             active={route().current('search.page')}
                         >
                             Search
                         </ResponsiveNavLink>}
-                        {canViewInvoices && <ResponsiveNavLink
+                        {!isPlatformAdmin && canViewInvoices && <ResponsiveNavLink
                             href={route('invoices.page')}
                             active={route().current('invoices.page')}
                         >
                             Invoices
                         </ResponsiveNavLink>}
-                        {canManageBilling && <ResponsiveNavLink
+                        {!isPlatformAdmin && canManageBilling && <ResponsiveNavLink
                             href={route('billing.page')}
                             active={route().current('billing.page')}
                         >
                             Billing
                         </ResponsiveNavLink>}
-                        {canViewReceipts && <ResponsiveNavLink
+                        {!isPlatformAdmin && canViewReceipts && <ResponsiveNavLink
                             href={route('receipts.page')}
                             active={route().current('receipts.page')}
                         >
                             Receipts
                         </ResponsiveNavLink>}
-                        {canViewContracts && <ResponsiveNavLink
+                        {!isPlatformAdmin && canViewContracts && <ResponsiveNavLink
                             href={route('contracts.page')}
                             active={route().current('contracts.page')}
                         >
                             Contracts
                         </ResponsiveNavLink>}
-                        {canManageIntegrations && <ResponsiveNavLink
+                        {!isPlatformAdmin && canManageIntegrations && <ResponsiveNavLink
                             href={route('integrations.page')}
                             active={route().current('integrations.page')}
                         >
                             Integrations
                         </ResponsiveNavLink>}
-                        {canViewAdmin && (
+                        {canViewAdmin && !isPlatformAdmin && (
                             <ResponsiveNavLink
                                 href={route('queue.status.page')}
                                 active={route().current('queue.status.page')}
@@ -685,17 +711,25 @@ export default function Authenticated({
                                 Queue Monitor
                             </ResponsiveNavLink>
                         )}
-                        {canUseAi && <ResponsiveNavLink
+                        {!isPlatformAdmin && canUseAi && <ResponsiveNavLink
                             href={route('ai.page')}
                             active={route().current('ai.page')}
                         >
                             AI Assistant
                         </ResponsiveNavLink>}
-                        {canViewAuditLogs && <ResponsiveNavLink
+                        {isPlatformAdmin && (
+                            <>
+                                <ResponsiveNavLink href={route('queue.status.page')} active={route().current('queue.status.page')}>Queue Monitor</ResponsiveNavLink>
+                                <ResponsiveNavLink href={route('admin.fault_logs.index')} active={route().current('admin.fault_logs.*')}>Fault Logs</ResponsiveNavLink>
+                                <ResponsiveNavLink href={route('admin.failed_jobs.index')} active={route().current('admin.failed_jobs.*')}>Failed Jobs</ResponsiveNavLink>
+                                <ResponsiveNavLink href={route('audit.logs.page')} active={route().current('audit.logs.*')}>System Audit Logs</ResponsiveNavLink>
+                            </>
+                        )}
+                        {!isPlatformAdmin && canViewSystemAuditLogs && <ResponsiveNavLink
                             href={route('audit.logs.page')}
                             active={route().current('audit.logs.page')}
                         >
-                            Audit Logs
+                            System Audit Logs
                         </ResponsiveNavLink>}
                     </div>
 

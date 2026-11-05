@@ -18,7 +18,7 @@ Route::get('/dashboard', function () {
     return Inertia::render('Dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
@@ -172,6 +172,9 @@ Route::middleware('auth')->group(function () {
                 ->name('plans');
             Route::post('/subscriptions', [\App\Http\Controllers\Billing\SubscriptionController::class, 'store'])
                 ->name('subscriptions.store');
+            Route::post('/payments/{paymentAttempt}/refund', [\App\Http\Controllers\Billing\SubscriptionController::class, 'refund'])
+                ->middleware('can:manage_billing')
+                ->name('payments.refund');
         });
 
     // Queue monitoring
@@ -202,6 +205,10 @@ Route::middleware('auth')->group(function () {
 });
 
 require __DIR__.'/auth.php';
+
+Route::post('/billing/webhooks/{provider}', \App\Http\Controllers\Billing\PaymentWebhookController::class)
+    ->whereIn('provider', ['stripe', 'razorpay', 'paypal'])
+    ->name('billing.webhooks');
 
 use App\Http\Controllers\Admin\FaultLogController;
 use App\Http\Controllers\Admin\FailedJobController;

@@ -19,6 +19,7 @@ class InertiaSharedPropsTest extends TestCase
         $user = User::factory()->create();
         $this->actingAs($user);
 
+        Gate::shouldReceive('allows')->with('viewPlatformAdmin')->andReturn(false);
         Gate::shouldReceive('allows')->with('viewAdmin')->andReturn(true);
         Gate::shouldReceive('allows')->with('viewHorizon')->andReturn(false);
 
@@ -34,6 +35,7 @@ class InertiaSharedPropsTest extends TestCase
         $can = $shared['can']();
 
         $this->assertArrayHasKey('user', $auth);
+        $this->assertFalse($can['isPlatformAdmin']);
         $this->assertTrue($can['viewAdmin']);
         $this->assertFalse($can['viewHorizon']);
     }
@@ -60,6 +62,7 @@ class InertiaSharedPropsTest extends TestCase
             ->assertInertia(fn ($page) => $page
                 ->where('auth.user.id', $user->id)
                 ->where('can.permissions', [Permission::PERMISSION_VIEW_INVOICES])
+                ->where('can.isPlatformAdmin', false)
                 ->where('can.viewAdmin', false));
     }
 
@@ -69,6 +72,7 @@ class InertiaSharedPropsTest extends TestCase
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->where('can.permissions', [])
+                ->where('can.isPlatformAdmin', false)
                 ->where('can.viewAdmin', false));
     }
 }

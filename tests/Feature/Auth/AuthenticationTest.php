@@ -30,6 +30,28 @@ class AuthenticationTest extends TestCase
         $response->assertRedirect(route('dashboard', absolute: false));
     }
 
+    public function test_unverified_users_are_redirected_to_the_verification_prompt_after_login(): void
+    {
+        $user = User::factory()->unverified()->create();
+
+        $response = $this->post('/login', [
+            'email' => $user->email,
+            'password' => 'password',
+        ]);
+
+        $this->assertAuthenticatedAs($user);
+        $response->assertRedirect(route('verification.notice', absolute: false));
+    }
+
+    public function test_unverified_users_cannot_access_authenticated_application_routes(): void
+    {
+        $user = User::factory()->unverified()->create();
+
+        $this->actingAs($user)
+            ->get(route('documents.index'))
+            ->assertRedirect(route('verification.notice'));
+    }
+
     public function test_users_can_not_authenticate_with_invalid_password(): void
     {
         $user = User::factory()->create();

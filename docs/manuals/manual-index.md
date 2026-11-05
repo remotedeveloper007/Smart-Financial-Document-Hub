@@ -5,6 +5,7 @@ Choose the guide for your role:
 - [Developer Manual](developer-manual.md): setup, architecture, feature workflow, security, testing, performance, deployment, and maintenance.
 - [Tester Manual](tester-manual.md): route-by-route manual scenarios, sample inputs, expected results, tenancy/access tests, and current gaps.
 - [Customer Manual](customer-manual.md): end-user workflows and limitations for currently registered pages.
+- [System Administrator Manual](system-admin-manual.md): platform-admin access, operational routines, safe queue/fault handling, role boundaries, and current limitations.
 
 Feature-specific design details remain in [`docs/features/`](../features/). These manuals summarize the cross-feature workflow and link to the feature documentation; they are not a substitute for migration details, request contracts, or troubleshooting specific to one implementation.
 

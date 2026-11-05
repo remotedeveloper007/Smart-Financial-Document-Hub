@@ -15,6 +15,7 @@ Authorization ensures users only access features and data allowed for their role
 - `Role` and `Permission` models
 - Model policies enforce feature permissions and team ownership
 - `AuthServiceProvider` registers policies and gates
+- Platform operations use a separate email allowlist (`SYSTEM_ADMIN_EMAILS`), never tenant role slugs
 - `RegisterUserAction` assigns the default `Owner` role when a user registers
 - `User::hasPermission()` evaluates the current team's roles, not just the user's account-wide identity
 
@@ -53,10 +54,11 @@ This table reflects `Role::defaultRolePermissions()` in `app/Models/Role.php`. A
 | Manage accounting integrations (`manage_integrations`) | Yes | Yes | No | No | No |
 | Use AI assistant (`use_ai`) | Yes | Yes | No | No | No |
 | Configure team AI provider (`manage_ai_settings`) | Yes | Yes | No | No | No |
-| View audit logs (`view_audit_logs`) | Yes | Yes | No | No | No |
-| Admin operations / queue monitoring (`viewAdmin` gate) | Yes | Yes | No | No | No |
+| Application administration / system audit logs / queue monitoring | No | No | No | No | No |
 
 **Important:** this is the permission assignment matrix, not a promise that every product operation is complete. For example, the transaction export policy requires `export_transactions`, so only Accountant receives it by default. Owner and Admin do not currently have that permission despite their broad role labels. Avoid assuming a role name implies an unlisted permission.
+
+Platform-level access is separate from this tenant matrix. Only verified accounts recorded in the `platform_administrators` table can use system administration tools. Seed this table from existing, verified users listed in the server-side `SYSTEM_ADMIN_EMAILS` variable. A tenant Owner or Admin cannot grant themselves this access by changing team roles or permissions.
 
 ## Pages and Actions by Role
 
@@ -74,16 +76,16 @@ This table reflects `Role::defaultRolePermissions()` in `app/Models/Role.php`. A
 | `/integrations` and integration APIs | `manage_integrations` | Owner, Admin | Configure and manage accounting integrations, imports, and exports. |
 | `/ai` and AI request APIs | `use_ai` | Owner, Admin | View AI request history and submit prompts when a provider is configured. |
 | AI provider settings on `/ai` | `manage_ai_settings` | Owner, Admin | Select the team's AI provider/model and configure its team-owned credential. |
-| `/audit/logs` | `view_audit_logs` | Owner, Admin | Read the current team's audit log. |
-| `/queue/status`, `/admin/*`, Horizon | `viewAdmin` gate based on Owner/Admin role in current team | Owner, Admin | View operational queues and restricted admin health/fault screens. |
+| `/audit/logs` | `AuditLogPolicy::viewAny` requires configured platform administrator | System Owner / Super Admin allowlisted by deployment | Read application-wide audit events, including sensitive provider-setting changes. |
+| `/queue/status`, `/admin/*`, Horizon | `viewAdmin` / `viewHorizon` platform administrator gates | System Owner / Super Admin allowlisted by deployment | View application-wide queues, health, fault, and job-management screens. |
 | `/billing` and subscription endpoints | Navigation uses `manage_billing`; controller does not currently enforce it | Owner, Accountant see the navigation tab | View plans and submit a subscription request. This is a local subscription foundation, not payment processing. Direct route access is not yet protected by this permission. |
 
 ### Role-by-role summary
 
-- **Owner:** assigned automatically to a newly registered user for their new team. Has all permissions listed in the matrix except `export_transactions`, which is currently missing from the default Owner grant. Can manage users/team/integrations/AI settings, use AI, view audit logs, and access admin operations.
-- **Admin:** broad operational role: can manage team members/team, integrations and AI settings; use AI; view financial records and audit logs; and access admin operations. Does not receive `manage_billing` or `export_transactions` by default.
-- **Manager:** can work with documents (create/edit/export), view invoices/receipts/contracts/transactions, search, but cannot manage members, integrations, billing, AI, audit logs, or admin operations.
-- **Accountant:** can view invoices/receipts/contracts/transactions, export documents and transactions, and has the `manage_billing` permission. Cannot manage team members, team, integrations, AI provider settings, audit logs, or admin operations. The current billing controller does not yet enforce that billing permission.
+- **Owner:** assigned automatically to a newly registered user for their new team. Has all permissions listed in the matrix except `export_transactions`, which is currently missing from the default Owner grant. Can manage users/team/integrations/AI settings and use AI, but cannot view system audit logs or application operations unless separately allowlisted as a platform administrator.
+- **Admin:** broad tenant role: can manage team members/team, integrations and AI settings, and use AI. Does not receive `manage_billing` or `export_transactions` by default and cannot view system audit logs or application operations unless separately allowlisted.
+- **Manager:** can work with documents (create/edit/export), view invoices/receipts/contracts/transactions, and search, but cannot access platform administration or system audit logs.
+- **Accountant:** can view invoices/receipts/contracts/transactions, export documents and transactions, and has the `manage_billing` permission. Cannot manage team members, team, integrations, AI provider settings, or access platform administration/system audit logs. The current billing controller does not yet enforce that billing permission.
 - **Viewer:** read-only permissions for documents, invoices, receipts, contracts, and transactions/search. The current documents page is gated by `create_documents`, so Viewer does not get the upload/document page through that route despite having `view_documents`; this is a route/policy gap to address before advertising a standalone document read page.
 
 ## Manual Verification After Login
@@ -91,8 +93,8 @@ This table reflects `Role::defaultRolePermissions()` in `app/Models/Role.php`. A
 Use the local demo accounts above in a local/testing environment only. Sign out between account changes so the browser session does not reuse the previous user.
 
 1. Sign in at `/login`; confirm the account lands on `/dashboard`.
-2. As Admin, verify Team Members, Documents, Transactions, Search, Invoices, Receipts, Contracts, Integrations, AI Assistant, Audit Logs, and admin links are visible. As Manager, verify only Dashboard, Documents, Transactions, Search, Invoices, Receipts, and Contracts are visible.
-3. As Accountant, verify Dashboard, Transactions, Search, Invoices, Receipts, Contracts, and Billing are visible; Team Members, Documents, Integrations, AI Assistant, and Audit Logs are not. Document export permission does not currently have its own navigation tab.
+2. As tenant Admin, verify Team Members, Documents, Transactions, Search, Invoices, Receipts, Contracts, Integrations, and AI Assistant are visible; System Audit Logs, System Health, and Queue Monitor are hidden. As Manager, verify only Dashboard, Documents, Transactions, Search, Invoices, Receipts, and Contracts are visible.
+3. As Accountant, verify Dashboard, Transactions, Search, Invoices, Receipts, Contracts, and Billing are visible; Team Members, Documents, Integrations, AI Assistant, and platform administration links are not. Document export permission does not currently have its own navigation tab.
 4. As Viewer, verify Dashboard, Transactions, Search, Invoices, Receipts, and Contracts are visible; restricted tabs are hidden.
 5. Repeat the checks at desktop, tablet, and mobile widths; the same permission rules must apply in all navigation presentations.
 6. Use the browser Network panel to test restricted URLs as well. A 403 means authorization denied that request; it is not the same as the DEBUG middleware log entry. Never solve a 403 by removing a controller authorization check.
@@ -110,23 +112,30 @@ Use the local demo accounts above in a local/testing environment only. Sign out 
 
 The demo accounts are synthetic and must never be seeded into production. A new self-registered user is assigned Owner by `RegisterUserAction`; the local demo seeder does not create an Owner account. `CreateDefaultRolesAction` creates the permission catalog before assigning role grants, so registration on a fresh install does not create empty roles. To investigate missing tabs or a 403, first confirm the signed-in account, active team, assigned role, and role-permission rows. On an existing local database, run `php artisan db:seed --class=AuthorizationSeeder` to synchronize default permissions and grants for existing teams. This does not assign roles to existing users.
 
+## Platform System Administrators
+
+System Audit Logs, System Health, Queue Monitor, fault/failed-job administration, and Horizon expose information across customer teams. They are not tenant permissions and must never be granted through a tenant Owner/Admin role.
+
+1. Create each platform operator account through the normal account registration process and verify its email. The seeder never creates users or passwords.
+2. Add the verified account emails to the server environment variable `SYSTEM_ADMIN_EMAILS`, separated by commas. For the local System Admin account, set `SYSTEM_ADMIN_EMAILS=superadmin@gmail.com`.
+3. Run `php artisan migrate` and `php artisan db:seed --class=PlatformAdministratorSeeder --force`. The seeder fails if the list is empty, a user does not exist, or an account is unverified.
+4. The idempotent seeder stores each account's `user_id` and `super_admin` role in `platform_administrators`; access checks read the database. Refresh Laravel's configuration cache after changing the environment list.
+5. To revoke access, delete the user's row from `platform_administrators`. Do not expose the seed configuration to tenant users or store it in client-side configuration.
+
+Audit log page and API both authorize with `AuditLogPolicy`. The API intentionally removes the tenant global scope only after authorization so platform operators can investigate events across teams. The response includes the team name for context. Tenant roles with an old audit permission are still denied.
+
 ### Existing local database repair and verification
 
-The local database used during the navigation issue had default role records but no `permission_role` grants for the default roles. `viewAdmin` checks the role name directly, so an Admin could see the Admin section while the feature tabs stayed hidden because `can.permissions` was empty. This was fixed in two ways:
+An earlier navigation bug allowed tenant Owner/Admin roles into platform operations. Platform access now uses the verified-email allowlist above; it does not depend on team role records. Default tenant roles no longer receive audit access, and the system audit policy rejects tenant permissions, including legacy grants.
 
-- `CreateDefaultRolesAction` now creates missing permission records and assigns role grants using permission IDs selected by slug. A registration regression test confirms a new Owner receives permissions without a prior manual seed.
-- `php artisan db:seed --class=AuthorizationSeeder --force` was run locally to synchronize role grants for existing teams. The post-seed query showed permissions attached to Owner, Admin, Manager, Accountant, and Viewer role records.
-
-After repairing an existing database, hard-refresh the browser (Ctrl+F5) or sign out and back in so the page reloads the updated Vite asset and fresh Inertia permission props. If a link is still missing, verify that the signed-in user actually has the expected role in the active team; the authorization seeder updates role grants but does not grant users roles.
-
-Focused verification after the fix: `php artisan test --filter="RegistrationTest|InertiaSharedPropsTest|DatabaseSeederSafetyTest"` — 7 passed, 55 assertions; Pint passed for the changed PHP files. The permission-filtered navigation production build and frontend unit tests passed in the preceding navigation change.
+After deploying the access fix, run the migration and platform-administrator seeder, refresh cached configuration, and hard-refresh the browser (Ctrl+F5) or sign out and back in. Tenant Owners/Admins should not see system audit, health, or queue links and direct requests must return 403. Seeded platform operators must have verified email and can see these links.
 
 ## Troubleshooting a 403 After Login
 
 1. Confirm which user is currently signed in; browser sessions can keep a previous account active.
 2. Check that the user is a member of the team selected by `TeamContext`.
 3. Check `role_user` for the user's role in that team.
-4. Check `permission_role` and `permissions.slug` for the permission required by that route.
+4. For tenant features, check `permission_role` and `permissions.slug`. For platform operations, check verified email and the user's `platform_administrators` row instead.
 5. Do not remove the controller authorization check to make a page load. Assign the intended least-privilege team role or fix the default matrix/policy if it is wrong.
 6. If a navigation link appears for a user who gets 403, treat it as a menu visibility defect; the route's 403 is expected enforcement until the link is hidden or the role is intentionally granted access.
 
@@ -173,6 +182,10 @@ Created:
 - Run `npm.cmd run build` to type-check the desktop, tablet, and mobile permission-filtered navigation.
 
 Latest navigation-prop verification: `php artisan test --filter=InertiaSharedPropsTest` — 3 passed, 35 assertions; `npm.cmd run build` — passed; `npm.cmd run test:unit -- --run` — 3 files and 4 tests passed; Pint passed for the changed PHP files.
+
+Platform-access verification: `php artisan test tests/Feature/PlatformAdministratorSeederTest.php tests/Feature/SystemHealthDashboardTest.php tests/Feature/AuditLogTest.php` — 10 passed, 39 assertions; targeted Pint check — passed. The local `PlatformAdministratorSeeder` ran successfully for the verified System Admin account, and the persisted database role is `super_admin`.
+
+Platform navigation verification: `npm.cmd run test:unit -- --run resources/js/Layouts/AuthenticatedLayout.test.tsx` verifies platform administrators see only platform-operation links, while tenant navigation remains permission-based for other users. `npm.cmd run build` type-checks and builds the navigation.
 
 ## Troubleshooting
 

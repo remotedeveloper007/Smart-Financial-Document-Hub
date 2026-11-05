@@ -2,14 +2,26 @@
 
 namespace App\Actions\Billing;
 
+use App\Enums\BillingInterval;
 use App\Jobs\SendSubscriptionCreatedJob;
+use App\Models\Plan;
 use App\Models\Subscription;
 use Carbon\Carbon;
+use LogicException;
 
 final class CreateSubscriptionAction
 {
-    public function execute(int $teamId, int $planId, array $meta = []): Subscription
-    {
+    public function execute(
+        int $teamId,
+        int $planId,
+        array $meta = [],
+        BillingInterval $interval = BillingInterval::Monthly,
+    ): Subscription {
+        $plan = Plan::query()->findOrFail($planId);
+        if ((float) $plan->price > 0) {
+            throw new LogicException('Paid subscriptions must be activated by a verified payment webhook.');
+        }
+
         $now = Carbon::now();
 
         $subscription = Subscription::updateOrCreate([
@@ -18,7 +30,10 @@ final class CreateSubscriptionAction
         ], [
             'status' => 'active',
             'starts_at' => $now,
-            'ends_at' => null,
+            'ends_at' => $interval->addTo($now),
+            'billing_interval' => $interval,
+            'current_period_start' => $now,
+            'current_period_end' => $interval->addTo($now),
             'meta' => $meta,
         ]);
 

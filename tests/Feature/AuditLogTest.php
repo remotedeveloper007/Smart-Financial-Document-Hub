@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Actions\Audit\RecordAuditLogAction;
 use App\Jobs\RecordAuditLogJob;
 use App\Models\Permission;
+use App\Models\PlatformAdministrator;
 use App\Models\Role;
 use App\Models\Team;
 use App\Models\User;
@@ -18,21 +19,40 @@ class AuditLogTest extends TestCase
 
     public function test_record_audit_log_and_list(): void
     {
-        $team = Team::factory()->create();
-        $user = $this->createAuditLogViewer($team);
+        $teamA = Team::factory()->create();
+        $teamB = Team::factory()->create();
+        $userA = User::factory()->create(['team_id' => $teamA->id]);
+        $userB = User::factory()->create(['team_id' => $teamB->id]);
 
         $action = new RecordAuditLogAction();
-        $log = $action->execute($team->id, $user->id, 'document.uploaded', 'App\\Models\\Document', 1, ['name' => 'file.pdf'], 'info', 'Uploaded document');
+        $log = $action->execute($teamA->id, $userA->id, 'document.uploaded', 'App\\Models\\Document', 1, ['name' => 'file.pdf'], 'info', 'Uploaded document');
+        $action->execute($teamB->id, $userB->id, 'ai.provider.settings.updated', 'App\\Models\\TeamAiProviderSetting', 2, null, 'info', 'Provider settings updated');
 
         $this->assertNotNull($log->id);
         $this->assertEquals('document.uploaded', $log->action);
 
-        $this->actingAs($user);
+        $systemOwner = User::factory()->create([
+            'team_id' => $teamA->id,
+            'email' => 'system-owner@example.test',
+        ]);
+        $systemOwner->markEmailAsVerified();
+        config()->set('system_access.admin_emails', ['system-owner@example.test']);
+        PlatformAdministrator::query()->create([
+            'user_id' => $systemOwner->id,
+            'role' => PlatformAdministrator::ROLE_SUPER_ADMIN,
+        ]);
 
-        $response = $this->getJson(route('audit.logs.list'));
+        $this->actingAs($systemOwner);
 
-        $response->assertOk();
-        $response->assertJsonFragment(['action' => 'document.uploaded']);
+        $this->get(route('audit.logs.page'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->component('Audit/Index'));
+        $this->getJson(route('audit.logs.list'))
+            ->assertOk()
+            ->assertJsonCount(2, 'logs.data')
+            ->assertJsonFragment(['action' => 'document.uploaded'])
+            ->assertJsonFragment(['action' => 'ai.provider.settings.updated'])
+            ->assertJsonFragment(['name' => $teamB->name]);
     }
 
     public function test_audit_log_action_dispatches_job_when_queue_enabled(): void
@@ -66,38 +86,23 @@ class AuditLogTest extends TestCase
         });
     }
 
-    public function test_audit_logs_are_tenant_scoped(): void
-    {
-        $teamA = Team::factory()->create();
-        $teamB = Team::factory()->create();
-
-        $userA = $this->createAuditLogViewer($teamA);
-        $userB = $this->createAuditLogViewer($teamB);
-
-        $action = new RecordAuditLogAction();
-        $action->execute($teamA->id, $userA->id, 'a.event', null, null, null, 'info', 'A');
-        $action->execute($teamB->id, $userB->id, 'b.event', null, null, null, 'info', 'B');
-
-        $this->actingAs($userA);
-        $response = $this->getJson(route('audit.logs.list'));
-        $response->assertOk();
-        $response->assertJsonCount(1, 'logs.data');
-    }
-
-    public function test_user_without_audit_permission_cannot_list_logs(): void
+    public function test_tenant_role_with_legacy_audit_permission_cannot_view_system_logs(): void
     {
         $team = Team::factory()->create();
-        $user = User::factory()->create(['team_id' => $team->id]);
+        $user = $this->createAuditLogViewer($team);
 
         $this->actingAs($user)
-            ->getJson(route('audit.logs.list'))
+            ->get(route('audit.logs.page'))
+            ->assertForbidden();
+
+        $this->getJson(route('audit.logs.list'))
             ->assertForbidden();
     }
 
     private function createAuditLogViewer(Team $team): User
     {
         $permission = Permission::firstOrCreate(
-            ['slug' => Permission::PERMISSION_VIEW_AUDIT_LOGS],
+            ['slug' => 'view_audit_logs'],
             ['name' => 'View audit logs'],
         );
         $role = Role::create(['team_id' => $team->id, 'name' => 'Auditor', 'slug' => 'auditor']);

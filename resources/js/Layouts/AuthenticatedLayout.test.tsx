@@ -3,6 +3,10 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import Authenticated from './AuthenticatedLayout';
 
+const { pageState } = vi.hoisted(() => ({
+    pageState: { isPlatformAdmin: false },
+}));
+
 vi.mock('@inertiajs/react', () => ({
     Link: ({
         href,
@@ -22,8 +26,11 @@ vi.mock('@inertiajs/react', () => ({
                 },
             },
             can: {
-                viewAdmin: false,
-                permissions: ['view_transactions'],
+                isPlatformAdmin: pageState.isPlatformAdmin,
+                viewAdmin: pageState.isPlatformAdmin,
+                permissions: pageState.isPlatformAdmin
+                    ? ['manage_users', 'create_documents', 'view_transactions', 'view_invoices', 'view_receipts', 'view_contracts', 'manage_integrations', 'manage_billing', 'use_ai']
+                    : ['view_transactions'],
             },
         },
     }),
@@ -56,6 +63,7 @@ let activeRoute = 'dashboard';
 
 beforeEach(() => {
     activeRoute = 'dashboard';
+    pageState.isPlatformAdmin = false;
     localStorage.clear();
     document.documentElement.removeAttribute('data-theme');
     vi.stubGlobal('route', (name?: string) => {
@@ -96,6 +104,8 @@ test('collapses the sidebar to labeled icons and keeps the active page clear', a
         screen.getByRole('link', { name: 'Dashboard' }).getAttribute('aria-current'),
     ).toBe('page');
     expect(screen.queryByRole('link', { name: 'Team Members' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'System Audit Logs' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Queue Monitor' })).toBeNull();
     await waitFor(() =>
         expect(localStorage.getItem('financial-hub-sidebar-collapsed')).toBe(
             'true',
@@ -139,4 +149,40 @@ test('restores saved sidebar and theme preferences', () => {
     expect(
         screen.getAllByRole('button', { name: 'Switch to light mode' }),
     ).toHaveLength(2);
+});
+
+test('platform administrators only see platform operations navigation', () => {
+    pageState.isPlatformAdmin = true;
+
+    render(
+        <Authenticated>
+            <p>Page content</p>
+        </Authenticated>,
+    );
+
+    for (const label of [
+        'System Health',
+        'Queue Monitor',
+        'Fault Logs',
+        'Failed Jobs',
+        'System Audit Logs',
+    ]) {
+        expect(screen.getAllByRole('link', { name: label }).length).toBeGreaterThan(0);
+    }
+
+    for (const label of [
+        'Dashboard',
+        'Team Members',
+        'Documents',
+        'Transactions',
+        'Search',
+        'Invoices',
+        'Receipts',
+        'Contracts',
+        'Integrations',
+        'Billing',
+        'AI Assistant',
+    ]) {
+        expect(screen.queryByRole('link', { name: label })).toBeNull();
+    }
 });

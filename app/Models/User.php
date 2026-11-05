@@ -2,28 +2,24 @@
 
 namespace App\Models;
 
-// use Database\Factories\UserFactory;
-// use Illuminate\Auth\MustVerifyEmail;
-// use Illuminate\Contracts\Auth\MustVerifyEmail as MustVerifyEmailContract;
+use App\Exceptions\TenantNotResolvedException;
+use App\Services\Tenancy\TeamContext;
+use Illuminate\Auth\MustVerifyEmail;
+use Illuminate\Contracts\Auth\MustVerifyEmail as MustVerifyEmailContract;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-use App\Exceptions\TenantNotResolvedException;
-use App\Models\Role;
-use App\Models\Team;
-use App\Services\Tenancy\TeamContext;
-
 #[Fillable(['name', 'email', 'password', 'team_id'])]
 #[Hidden(['password', 'remember_token'])]
-class User extends Authenticatable //implements MustVerifyEmailContract
-// class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmailContract
 {
-    use HasFactory, Notifiable; //MustVerifyEmail;
+    use HasFactory, MustVerifyEmail, Notifiable;
 
     /**
      * Per-request caches to reduce repeat queries.
@@ -50,6 +46,11 @@ class User extends Authenticatable //implements MustVerifyEmailContract
     public function roles(): BelongsToMany
     {
         return $this->belongsToMany(Role::class, 'role_user')->withTimestamps();
+    }
+
+    public function platformAdministrator(): HasOne
+    {
+        return $this->hasOne(PlatformAdministrator::class);
     }
 
     public function hasRole(string $role): bool
@@ -90,6 +91,12 @@ class User extends Authenticatable //implements MustVerifyEmailContract
         }
 
         return in_array($permission, $this->permissionCache[$teamId], true);
+    }
+
+    public function isPlatformAdministrator(): bool
+    {
+        return $this->hasVerifiedEmail()
+            && $this->platformAdministrator()->exists();
     }
 
     private function currentTeamId(): ?int

@@ -12,7 +12,7 @@ Authentication is required before users can securely access tenant-specific dash
 
 - Laravel Breeze for authentication controllers and routes
 - Inertia.js with React and TypeScript for frontend pages
-- `User` model implements email verification
+- `User` model implements Laravel's `MustVerifyEmail` contract and trait
 - Team creation during registration for tenant isolation
 - Global middleware resolves the user's current team context
 - Validation handled by `App\Http\Requests\Auth\RegisterUserRequest`
@@ -62,7 +62,9 @@ No new tables were introduced by authentication. Existing tables used:
 3. `RegisterUserRequest` validates the registration input.
 4. `RegisteredUserController` delegates the registration workflow to `RegisterUserAction`.
 5. Registered users are assigned a personal team and added to the team membership table.
-6. Authenticated users are redirected to `/dashboard`.
+6. Laravel sends a signed verification notification. Registration and unverified login redirect to `/verify-email`.
+7. The `/dashboard` route and authenticated application routes require `auth` and `verified`; only verification, resend, and logout routes remain available before verification.
+8. With local `MAIL_MAILER=log`, the verification message and signed link are written to `storage/logs/laravel.log`. Configure a real mail provider in production.
 
 ## After Login: Workspace Access
 
@@ -77,6 +79,8 @@ New self-registered users are assigned the **Owner** role for their newly create
 - Confirm auth pages load with `GET /login`, `GET /register`, `GET /forgot-password`
 - Confirm a new registration creates a team and team membership
 - Confirm login works with valid credentials
+- Confirm an unverified registration is prompted to verify and receives a verification notification
+- Confirm unverified users cannot open the dashboard or authenticated application routes
 - Confirm password reset flow sends a reset notification
 - Confirm email verification can be completed with a signed URL
 - Confirm registration validation is handled by `RegisterUserRequest`
@@ -91,9 +95,14 @@ New self-registered users are assigned the **Owner** role for their newly create
 - [x] Personal team is created during registration
 - [x] Team membership pivot is persisted
 - [x] Password storage uses hashing
+- [x] Registration/login require email verification before application access
+- [x] Local mailer logs verification notifications for development
 - [x] Feature tests cover registration and validation failures
 
 ## Test Results
+
+- `php artisan test tests/Feature/Auth/RegistrationTest.php tests/Feature/Auth/AuthenticationTest.php tests/Feature/Auth/EmailVerificationTest.php` — passed: 11 tests, 36 assertions.
+- `vendor/bin/pint --test app/Models/User.php app/Http/Controllers/Auth/RegisteredUserController.php app/Http/Controllers/Auth/AuthenticatedSessionController.php tests/Feature/Auth/RegistrationTest.php tests/Feature/Auth/AuthenticationTest.php` — passed.
 
 - `bash php artisan test --filter="RegistrationTest"`
 
@@ -123,6 +132,8 @@ OK (21 tests, 51 assertions)
 
 - If auth routes return 404, ensure `routes/auth.php` is included from `routes/web.php`.
 - If password reset emails don't send during tests, verify `Notification::fake()` is used in the test.
+- In local development, set `MAIL_MAILER=log`, clear cached config with `php artisan config:clear`, then inspect `storage/logs/laravel.log` for the verification notification and signed URL. Treat that URL as a credential: do not share log output publicly.
+- In production, configure an actual mail transport and sender domain; the `log` mailer records messages but does not deliver them to users.
 - If registration doesn't persist `team_id`, verify `Team::create()` and user association logic in `RegisteredUserController`.
 - If validation rules change, update `RegisterUserRequest` rather than the controller.
 

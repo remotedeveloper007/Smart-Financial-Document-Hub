@@ -64,4 +64,24 @@ return [
         'driver' => env('DOCUMENT_EXTRACTION_DRIVER', 'simulated'),
     ],
 
+    'payments' => [
+        'stripe' => [
+            'secret' => env('STRIPE_SECRET'),
+            'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+            'base_url' => env('STRIPE_BASE_URL', 'https://api.stripe.com'),
+        ],
+        'razorpay' => [
+            'key_id' => env('RAZORPAY_KEY_ID'),
+            'key_secret' => env('RAZORPAY_KEY_SECRET'),
+            'webhook_secret' => env('RAZORPAY_WEBHOOK_SECRET'),
+            'base_url' => env('RAZORPAY_BASE_URL', 'https://api.razorpay.com'),
+        ],
+        'paypal' => [
+            'client_id' => env('PAYPAL_CLIENT_ID'),
+            'client_secret' => env('PAYPAL_CLIENT_SECRET'),
+            'webhook_id' => env('PAYPAL_WEBHOOK_ID'),
+            'base_url' => env('PAYPAL_BASE_URL', 'https://api-m.sandbox.paypal.com'),
+        ],
+    ],
+
 ];

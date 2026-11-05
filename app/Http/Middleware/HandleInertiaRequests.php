@@ -45,6 +45,7 @@ class HandleInertiaRequests extends Middleware
                 'user' => $user,
             ],
             'can' => [
+                'isPlatformAdmin' => $user !== null && Gate::allows('viewPlatformAdmin'),
                 'viewAdmin' => $user !== null && Gate::allows('viewAdmin'),
                 'permissions' => $permissions,
             ],

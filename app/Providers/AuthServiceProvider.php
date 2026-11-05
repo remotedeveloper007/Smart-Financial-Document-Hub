@@ -57,14 +57,8 @@ class AuthServiceProvider extends ServiceProvider
             Gate::define($slug, fn ($user) => method_exists($user, 'hasPermission') && $user->hasPermission($slug));
         }
 
-        // Gate to control access to Horizon dashboard. Limited to Owner and Admin roles.
-        Gate::define('viewHorizon', fn ($user) => method_exists($user, 'hasRole') && (
-            $user->hasRole('owner') || $user->hasRole('admin')
-        ));
-
-        // Gate to control access to admin UI for logs and job management.
-        Gate::define('viewAdmin', fn ($user) => method_exists($user, 'hasRole') && (
-            $user->hasRole('owner') || $user->hasRole('admin')
-        ));
+        Gate::define('viewPlatformAdmin', fn ($user) => $user->isPlatformAdministrator());
+        Gate::define('viewHorizon', fn ($user) => $user->isPlatformAdministrator());
+        Gate::define('viewAdmin', fn ($user) => $user->isPlatformAdministrator());
     }
 }

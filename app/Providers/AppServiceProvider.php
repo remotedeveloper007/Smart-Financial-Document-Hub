@@ -3,15 +3,19 @@
 namespace App\Providers;
 
 use App\Contracts\MalwareScanner;
+use App\Services\Billing\PaymentProviderManager;
+use App\Services\Billing\Providers\PayPalPaymentProvider;
+use App\Services\Billing\Providers\RazorpayPaymentProvider;
+use App\Services\Billing\Providers\StripePaymentProvider;
 use App\Services\Security\ClamAvScanner;
-use Illuminate\Support\Facades\Vite;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Cache\RateLimiting\Limit;
-use Illuminate\Http\Request;
-use Inertia\Inertia;
+use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
+use Inertia\Inertia;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -21,6 +25,15 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(MalwareScanner::class, ClamAvScanner::class);
+        $this->app->tag([
+            StripePaymentProvider::class,
+            RazorpayPaymentProvider::class,
+            PayPalPaymentProvider::class,
+        ], 'billing.payment-providers');
+        $this->app->singleton(
+            PaymentProviderManager::class,
+            fn ($app) => new PaymentProviderManager($app->tagged('billing.payment-providers')),
+        );
     }
 
     /**
@@ -48,6 +61,7 @@ class AppServiceProvider extends ServiceProvider
             },
             'can' => function () {
                 return [
+                    'isPlatformAdmin' => Gate::allows('viewPlatformAdmin'),
                     'viewAdmin' => Gate::allows('viewAdmin'),
                     'viewHorizon' => Gate::allows('viewHorizon'),
                 ];
