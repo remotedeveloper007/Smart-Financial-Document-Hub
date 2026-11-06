@@ -8,7 +8,7 @@ import ApplicationLogo from '@/Components/ApplicationLogo';
 import Dropdown from '@/Components/Dropdown';
 import NavLink from '@/Components/NavLink';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink';
-import { Link, usePage } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 import { PropsWithChildren, ReactNode, useEffect, useState } from 'react';
 
 type Theme = 'light' | 'dark';
@@ -138,6 +138,44 @@ function AppearanceToggle({
     );
 }
 
+type TeamSummary = {
+    id: number;
+    name: string;
+};
+
+function TeamSwitcher({
+    teams,
+    activeTeam,
+}: {
+    teams: TeamSummary[];
+    activeTeam: TeamSummary | null;
+}) {
+    if (teams.length < 2) {
+        return null;
+    }
+
+    return (
+        <select
+            aria-label="Active team"
+            value={activeTeam?.id ?? ''}
+            onChange={(event) =>
+                router.post(
+                    route('team.active.update'),
+                    { team_id: Number(event.currentTarget.value) },
+                    { preserveScroll: true },
+                )
+            }
+            className="max-w-40 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+        >
+            {teams.map((team) => (
+                <option key={team.id} value={team.id}>
+                    {team.name}
+                </option>
+            ))}
+        </select>
+    );
+}
+
 function NavigationSection({
     title,
     collapsed,
@@ -170,6 +208,10 @@ type AuthenticatedPageProps = {
         viewAdmin?: boolean;
         permissions?: string[];
     };
+    tenant?: {
+        activeTeam: TeamSummary | null;
+        teams: TeamSummary[];
+    };
 };
 
 export default function Authenticated({
@@ -180,6 +222,8 @@ export default function Authenticated({
     // const props = usePage().props;
     const props = usePage<AuthenticatedPageProps>().props;
     const user = props.auth?.user;
+    const activeTeam = props.tenant?.activeTeam ?? null;
+    const teams = props.tenant?.teams ?? [];
     const isPlatformAdmin = props.can?.isPlatformAdmin ?? false;
     const canViewAdmin = props.can?.viewAdmin ?? false;
     const permissions = new Set(props.can?.permissions ?? []);
@@ -391,7 +435,8 @@ export default function Authenticated({
                 </div>
             </aside>
 
-            <header className="sticky top-0 z-40 hidden h-16 items-center justify-end border-b border-slate-200 bg-white px-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 lg:flex">
+            <header className="sticky top-0 z-40 hidden h-16 items-center justify-between border-b border-slate-200 bg-white px-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 lg:flex">
+                <TeamSwitcher teams={teams} activeTeam={activeTeam} />
                 <AppearanceToggle
                     theme={theme}
                     onToggle={() =>
@@ -405,7 +450,7 @@ export default function Authenticated({
             {/* Keep the existing responsive top navigation for small screens; desktop users use the sidebar above. */}
             <nav className="sticky top-0 z-40 border-b border-gray-100 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 lg:hidden">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                    <div className="flex h-16 justify-between">
+                    <div className="flex h-16 items-center justify-between">
                         <div className="flex">
                             <div className="flex shrink-0 items-center">
                                 <Link href="/">
@@ -562,6 +607,7 @@ export default function Authenticated({
                         </div>
 
                         <div className="-me-2 flex items-center gap-2 sm:hidden">
+                            <TeamSwitcher teams={teams} activeTeam={activeTeam} />
                             <AppearanceToggle
                                 theme={theme}
                                 onToggle={() =>

@@ -14,7 +14,7 @@ class AiRequestPolicyTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_user_with_use_ai_can_view_and_create_requests(): void
+    public function test_user_with_use_ai_can_view_their_own_request_and_create_requests(): void
     {
         $team = Team::factory()->create();
         $permission = Permission::create(['name' => 'Use AI', 'slug' => Permission::PERMISSION_USE_AI]);
@@ -29,10 +29,17 @@ class AiRequestPolicyTest extends TestCase
         $teamContext->setTeam($team);
         $this->app->instance(\App\Services\Tenancy\TeamContext::class, $teamContext);
 
-        $ai = AiRequest::factory()->create(['team_id' => $team->id]);
+        $ai = AiRequest::factory()->create([
+            'team_id' => $team->id,
+            'user_id' => $user->id,
+        ]);
 
         $this->assertTrue($user->can('view', $ai));
         $this->assertTrue($user->can('create', AiRequest::class));
+
+        $otherUser = User::factory()->create(['team_id' => $team->id]);
+        $otherUser->roles()->attach($role);
+        $this->assertFalse($otherUser->can('view', $ai));
     }
 
     public function test_user_without_permission_cannot_view_ai(): void

@@ -27,6 +27,24 @@ class DocumentUploadTest extends TestCase
         $response->assertOk();
     }
 
+    public function test_user_with_view_documents_permission_can_list_documents_without_upload_permission(): void
+    {
+        $team = Team::factory()->create();
+        $user = $this->createUserWithPermission($team, Permission::PERMISSION_VIEW_DOCUMENTS);
+        Document::factory()->create([
+            'team_id' => $team->id,
+            'name' => 'Visible statement',
+        ]);
+
+        $response = $this->actingAs($user)->getJson(route('documents.index'));
+
+        $response->assertOk()
+            ->assertJsonCount(1, 'documents')
+            ->assertJsonPath('documents.0.name', 'Visible statement');
+
+        $this->actingAs($user)->get('/documents/upload')->assertForbidden();
+    }
+
     public function test_user_with_create_documents_permission_can_upload_pdf(): void
     {
         Bus::fake();

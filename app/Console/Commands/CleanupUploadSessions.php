@@ -26,11 +26,12 @@ class CleanupUploadSessions extends Command
             }
             $files = Storage::disk('local')->files($prefix);
             foreach ($files as $file) {
-                $path = storage_path('app/' . $file);
-                if (! file_exists($path)) {
+                if (! Storage::disk('local')->exists($file)) {
                     continue;
                 }
-                $mtime = Carbon::createFromTimestamp(filemtime($path));
+                $mtime = Carbon::createFromTimestamp(
+                    Storage::disk('local')->lastModified($file),
+                );
                 if ($mtime->lessThan($cutoff)) {
                     $this->info("Cleaning session: {$file}");
                     $sessionId = pathinfo($file, PATHINFO_FILENAME);

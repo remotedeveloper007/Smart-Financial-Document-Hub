@@ -30,7 +30,7 @@ function Detail({ label, value }: { label: string; value: string | number | null
             <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 {label}
             </dt>
-            <dd className="mt-1 break-words text-sm text-slate-900">
+            <dd className="mt-1 wrap-break-word text-sm text-slate-900">
                 {value ?? '—'}
             </dd>
         </div>
@@ -94,7 +94,7 @@ export default function FaultLogsShow({ log }: Props) {
                                 {log.status ?? 'Open'}
                             </span>
                         </div>
-                        <h3 className="mt-4 break-words text-lg font-semibold text-slate-900">
+                        <h3 className="mt-4 wrap-break-word text-lg font-semibold text-slate-900">
                             {log.message}
                         </h3>
                     </section>
@@ -119,7 +119,7 @@ export default function FaultLogsShow({ log }: Props) {
                         <h3 className="text-lg font-semibold text-slate-900">
                             Root cause
                         </h3>
-                        <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-slate-700">
+                        <p className="mt-3 whitespace-pre-wrap wrap-break-word text-sm leading-6 text-slate-700">
                             {log.root_cause || 'No root cause has been recorded.'}
                         </p>
                     </section>
@@ -128,7 +128,7 @@ export default function FaultLogsShow({ log }: Props) {
                         <h3 className="text-lg font-semibold text-slate-900">
                             Recommended fix
                         </h3>
-                        <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-slate-700">
+                        <p className="mt-3 whitespace-pre-wrap wrap-break-word text-sm leading-6 text-slate-700">
                             {log.recommended_fix || 'No recommended fix has been recorded.'}
                         </p>
                     </section>
@@ -137,7 +137,7 @@ export default function FaultLogsShow({ log }: Props) {
                         <h3 className="text-lg font-semibold text-white">
                             Stack trace
                         </h3>
-                        <pre className="mt-4 max-h-[32rem] overflow-auto whitespace-pre-wrap break-words text-xs leading-5 text-slate-200">
+                        <pre className="mt-4 max-h-128 overflow-auto whitespace-pre-wrap wrap-break-word text-xs leading-5 text-slate-200">
                             {log.stack_trace || 'No stack trace was recorded.'}
                         </pre>
                     </section>

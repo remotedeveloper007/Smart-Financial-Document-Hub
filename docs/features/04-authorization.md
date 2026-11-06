@@ -49,7 +49,7 @@ This table reflects `Role::defaultRolePermissions()` in `app/Models/Role.php`. A
 | View transactions/search (`view_transactions`) | Yes | Yes | Yes | Yes | Yes |
 | Export transactions (`export_transactions`) | **No** | **No** | **No** | Yes | No |
 | Manage team members and roles (`manage_users`) | Yes | Yes | No | No | No |
-| Manage billing (`manage_billing`) | Yes | **No** | No | Yes | No |
+| Manage billing (`manage_billing`) | Yes | **No** | No | No | No |
 | Manage team (`manage_team`) | Yes | Yes | No | No | No |
 | Manage accounting integrations (`manage_integrations`) | Yes | Yes | No | No | No |
 | Use AI assistant (`use_ai`) | Yes | Yes | No | No | No |
@@ -67,7 +67,8 @@ Platform-level access is separate from this tenant matrix. Only verified account
 | `/dashboard` | Authenticated and email verified | Any signed-in verified team user | Open the shared dashboard. |
 | `/profile` | Authenticated | Any signed-in user | View/update their own profile and password. |
 | `/team/members` and its member APIs | `manage_users` and current-team membership | Owner, Admin | List members, add members, change roles, remove members. |
-| `/documents/upload`, document listing endpoint, and upload | `create_documents` | Owner, Admin, Manager | Open upload workflow, list documents through that workflow, and submit uploads. The current controller uses the create permission for its document list too. |
+| `/documents/upload` and `POST /documents` | `create_documents` | Owner, Admin, Manager | Open the upload screen and submit a document. |
+| `GET /documents` | `view_documents` | All five default roles | Read the active team's document list through the JSON API. There is not yet a separate read-only document page in the frontend. |
 | `/transactions`, `/search`, transaction search API | `view_transactions` | Owner, Admin, Manager, Accountant, Viewer | View the current team's transaction list and search results. |
 | `/transactions/export` | `export_transactions` | Accountant | Request a transaction export. |
 | `/invoices` | `view_invoices` | All five default roles | View the current team's invoice list. |
@@ -78,15 +79,15 @@ Platform-level access is separate from this tenant matrix. Only verified account
 | AI provider settings on `/ai` | `manage_ai_settings` | Owner, Admin | Select the team's AI provider/model and configure its team-owned credential. |
 | `/audit/logs` | `AuditLogPolicy::viewAny` requires configured platform administrator | System Owner / Super Admin allowlisted by deployment | Read application-wide audit events, including sensitive provider-setting changes. |
 | `/queue/status`, `/admin/*`, Horizon | `viewAdmin` / `viewHorizon` platform administrator gates | System Owner / Super Admin allowlisted by deployment | View application-wide queues, health, fault, and job-management screens. |
-| `/billing` and subscription endpoints | Navigation uses `manage_billing`; controller does not currently enforce it | Owner, Accountant see the navigation tab | View plans and submit a subscription request. This is a local subscription foundation, not payment processing. Direct route access is not yet protected by this permission. |
+| `/billing` and subscription checkout/refund endpoints | `manage_billing` is checked by the controller or request; generic plan catalog requires sign-in | Owner | View team subscriptions and payment attempts, start checkout, and request a refund. This is a local subscription foundation, not payment processing. |
 
 ### Role-by-role summary
 
 - **Owner:** assigned automatically to a newly registered user for their new team. Has all permissions listed in the matrix except `export_transactions`, which is currently missing from the default Owner grant. Can manage users/team/integrations/AI settings and use AI, but cannot view system audit logs or application operations unless separately allowlisted as a platform administrator.
 - **Admin:** broad tenant role: can manage team members/team, integrations and AI settings, and use AI. Does not receive `manage_billing` or `export_transactions` by default and cannot view system audit logs or application operations unless separately allowlisted.
 - **Manager:** can work with documents (create/edit/export), view invoices/receipts/contracts/transactions, and search, but cannot access platform administration or system audit logs.
-- **Accountant:** can view invoices/receipts/contracts/transactions, export documents and transactions, and has the `manage_billing` permission. Cannot manage team members, team, integrations, AI provider settings, or access platform administration/system audit logs. The current billing controller does not yet enforce that billing permission.
-- **Viewer:** read-only permissions for documents, invoices, receipts, contracts, and transactions/search. The current documents page is gated by `create_documents`, so Viewer does not get the upload/document page through that route despite having `view_documents`; this is a route/policy gap to address before advertising a standalone document read page.
+- **Accountant:** can view invoices/receipts/contracts/transactions and export documents and transactions. Cannot manage billing, team members, team, integrations, AI provider settings, or access platform administration/system audit logs.
+- **Viewer:** read-only permissions for documents, invoices, receipts, contracts, and transactions/search. Viewers can use `GET /documents`, but the current frontend has no separate read-only document page; `/documents/upload` correctly requires `create_documents`.
 
 ## Manual Verification After Login
 
@@ -94,7 +95,7 @@ Use the local demo accounts above in a local/testing environment only. Sign out 
 
 1. Sign in at `/login`; confirm the account lands on `/dashboard`.
 2. As tenant Admin, verify Team Members, Documents, Transactions, Search, Invoices, Receipts, Contracts, Integrations, and AI Assistant are visible; System Audit Logs, System Health, and Queue Monitor are hidden. As Manager, verify only Dashboard, Documents, Transactions, Search, Invoices, Receipts, and Contracts are visible.
-3. As Accountant, verify Dashboard, Transactions, Search, Invoices, Receipts, Contracts, and Billing are visible; Team Members, Documents, Integrations, AI Assistant, and platform administration links are not. Document export permission does not currently have its own navigation tab.
+3. As Accountant, verify Dashboard, Transactions, Search, Invoices, Receipts, and Contracts are visible; Billing, Team Members, Documents, Integrations, AI Assistant, and platform administration links are not. Document export permission does not currently have its own navigation tab.
 4. As Viewer, verify Dashboard, Transactions, Search, Invoices, Receipts, and Contracts are visible; restricted tabs are hidden.
 5. Repeat the checks at desktop, tablet, and mobile widths; the same permission rules must apply in all navigation presentations.
 6. Use the browser Network panel to test restricted URLs as well. A 403 means authorization denied that request; it is not the same as the DEBUG middleware log entry. Never solve a 403 by removing a controller authorization check.

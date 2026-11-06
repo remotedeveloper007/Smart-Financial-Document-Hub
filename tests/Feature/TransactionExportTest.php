@@ -46,6 +46,28 @@ class TransactionExportTest extends TestCase
         $response->assertSee('Exported transaction');
     }
 
+    public function test_export_neutralizes_spreadsheet_formulas_in_text_fields(): void
+    {
+        $team = Team::factory()->create();
+        $user = $this->createUserWithPermission($team, Permission::PERMISSION_EXPORT_TRANSACTIONS);
+
+        Transaction::factory()->create([
+            'team_id' => $team->id,
+            'description' => '=1+1',
+            'amount' => 10,
+            'transaction_date' => '2026-07-21',
+            'type' => '+SUM',
+            'reference' => '@IMPORT',
+        ]);
+
+        $response = $this->actingAs($user)->get(route('transactions.export'));
+
+        $response->assertOk()
+            ->assertSee("'=1+1", false)
+            ->assertSee("'+SUM", false)
+            ->assertSee("'@IMPORT", false);
+    }
+
     private function createUserWithPermission(Team $team, string $permissionSlug): User
     {
         $permission = Permission::create(['name' => ucfirst(str_replace('_', ' ', $permissionSlug)), 'slug' => $permissionSlug]);

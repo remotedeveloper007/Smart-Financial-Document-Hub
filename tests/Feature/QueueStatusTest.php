@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Role;
 use App\Models\Team;
 use App\Models\User;
+use App\Models\PlatformAdministrator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -14,7 +15,7 @@ class QueueStatusTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_team_admin_can_view_queue_status_page(): void
+    public function test_platform_admin_can_view_queue_status_page(): void
     {
         $team = Team::factory()->create();
         $user = $this->createAdmin($team);
@@ -24,7 +25,7 @@ class QueueStatusTest extends TestCase
         $response->assertOk();
     }
 
-    public function test_queue_status_endpoint_returns_job_metrics(): void
+    public function test_platform_admin_can_view_queue_job_metrics(): void
     {
         $team = Team::factory()->create();
         $user = $this->createAdmin($team);
@@ -59,8 +60,15 @@ class QueueStatusTest extends TestCase
     private function createAdmin(Team $team): User
     {
         $role = Role::create(['team_id' => $team->id, 'name' => 'Admin', 'slug' => 'admin']);
-        $user = User::factory()->create(['team_id' => $team->id]);
+        $user = User::factory()->create([
+            'team_id' => $team->id,
+            'email_verified_at' => now(),
+        ]);
         $user->roles()->attach($role);
+        PlatformAdministrator::create([
+            'user_id' => $user->id,
+            'role' => PlatformAdministrator::ROLE_SYSTEM_OWNER,
+        ]);
 
         return $user;
     }

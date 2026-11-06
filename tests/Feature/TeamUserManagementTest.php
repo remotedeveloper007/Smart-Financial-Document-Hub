@@ -35,6 +35,34 @@ class TeamUserManagementTest extends TestCase
         $response->assertForbidden();
     }
 
+    public function test_team_member_response_does_not_expose_roles_from_other_teams(): void
+    {
+        $teamA = Team::factory()->create();
+        $teamB = Team::factory()->create();
+        $owner = $this->createTeamOwnerWithManageUsersPermission($teamA);
+        $member = User::factory()->create(['team_id' => $teamA->id]);
+        $teamA->addMember($member);
+        $teamB->addMember($member);
+
+        $teamARole = Role::create([
+            'team_id' => $teamA->id,
+            'name' => 'Team A Reviewer',
+            'slug' => 'team-a-reviewer',
+        ]);
+        $teamBRole = Role::create([
+            'team_id' => $teamB->id,
+            'name' => 'Team B Reviewer',
+            'slug' => 'team-b-reviewer',
+        ]);
+        $member->roles()->attach([$teamARole->id, $teamBRole->id]);
+
+        $response = $this->actingAs($owner)->getJson(route('team.members.index'));
+
+        $response->assertOk()
+            ->assertJsonFragment(['slug' => 'team-a-reviewer'])
+            ->assertJsonMissing(['slug' => 'team-b-reviewer']);
+    }
+
     public function test_owner_can_add_update_and_remove_team_member(): void
     {
         $team = Team::factory()->create();

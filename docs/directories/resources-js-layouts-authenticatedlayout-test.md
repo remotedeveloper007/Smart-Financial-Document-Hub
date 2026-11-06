@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This Vitest file checks the sidebar and theme controls without needing a Laravel server or a real login.
+This Vitest file checks the sidebar, theme, and active-team controls without needing a Laravel server or a real login.
 
 ## Dependencies
 
@@ -19,7 +19,8 @@ This Vitest file checks the sidebar and theme controls without needing a Laravel
 4. The sidebar test clicks **Collapse sidebar**, checks the expand button and active link, then checks that the collapsed setting was saved.
 5. The theme test clicks **Switch to dark mode**, checks the root HTML theme, and checks that the selection was saved. It also checks both responsive theme buttons use the same state.
 6. The restore test starts with saved settings and confirms the layout reads them.
-7. After each test, rendered React elements and mocked globals are cleaned up.
+7. The team-switch test supplies two allowed teams, selects one, and verifies that the Inertia router posts its ID to the active-team route.
+8. After each test, rendered React elements and mocked globals are cleaned up.
 
 ## Inputs and outputs
 

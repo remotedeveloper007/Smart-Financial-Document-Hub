@@ -5,7 +5,9 @@ namespace Tests\Feature;
 use App\Actions\Billing\CreateSubscriptionAction;
 use App\Actions\Billing\RefundPaymentAction;
 use App\Models\PaymentAttempt;
+use App\Models\Permission;
 use App\Models\Plan;
+use App\Models\Role;
 use App\Models\Subscription;
 use App\Models\Team;
 use App\Models\User;
@@ -46,7 +48,19 @@ class BillingTest extends TestCase
         ]);
 
         $this->team = Team::factory()->create(['id' => random_int(1_000_000, 2_000_000_000)]);
+        $manageBilling = Permission::firstOrCreate(
+            ['slug' => Permission::PERMISSION_MANAGE_BILLING],
+            ['name' => 'Manage billing'],
+        );
+        $billingRole = Role::create([
+            'team_id' => $this->team->id,
+            'name' => 'Billing manager',
+            'slug' => 'billing-manager',
+        ]);
+        $billingRole->permissions()->attach($manageBilling);
+
         $this->user = User::factory()->create(['team_id' => $this->team->id]);
+        $this->user->roles()->attach($billingRole);
         $this->plan = Plan::create([
             'slug' => 'pro',
             'name' => 'Pro',
@@ -69,6 +83,25 @@ class BillingTest extends TestCase
                 ->where('providers', ['stripe'])
                 ->has('subscriptions', 0)
                 ->has('paymentAttempts', 0));
+    }
+
+    public function test_non_billing_team_member_cannot_view_billing_or_start_checkout(): void
+    {
+        $member = User::factory()->create(['team_id' => $this->team->id]);
+        $this->actingAs($member);
+
+        $this->get(route('billing.page'))->assertForbidden();
+
+        $this->withHeader('Idempotency-Key', 'c0a80123-4567-4890-a123-456789abcdef')
+            ->postJson(route('billing.subscriptions.store'), [
+                'plan_id' => $this->plan->id,
+                'provider' => 'stripe',
+                'billing_interval' => 'monthly',
+            ])
+            ->assertForbidden();
+
+        $this->assertDatabaseCount('payment_attempts', 0);
+        Http::assertNothingSent();
     }
 
     public function test_checkout_starts_one_monthly_payment_attempt_and_is_idempotent(): void
@@ -118,12 +151,32 @@ class BillingTest extends TestCase
             ->postJson(route('billing.subscriptions.store'), [
                 'plan_id' => $this->plan->id,
                 'provider' => 'stripe',
-                'billing_interval' => 'yearly',
+                'billing_interval' => 'monthly',
             ]);
         $response->assertOk()->assertJsonPath('status', 'pending');
 
         $this->assertDatabaseCount('payment_attempts', 1);
         Http::assertSentCount(1);
+    }
+
+    public function test_checkout_does_not_reuse_pending_attempt_with_a_different_interval(): void
+    {
+        $this->startCheckout('c0a80123-4567-4890-a123-456789abcdef');
+
+        $this->withHeader('Idempotency-Key', 'c0a80123-4567-4890-a123-456789abcdee')
+            ->postJson(route('billing.subscriptions.store'), [
+                'plan_id' => $this->plan->id,
+                'provider' => 'stripe',
+                'billing_interval' => 'yearly',
+            ])
+            ->assertOk();
+
+        $this->assertDatabaseCount('payment_attempts', 2);
+        $this->assertSame(
+            ['monthly', 'yearly'],
+            PaymentAttempt::query()->orderBy('id')->pluck('billing_interval')->map->value->all(),
+        );
+        Http::assertSentCount(2);
     }
 
     public function test_yearly_checkout_uses_yearly_amount_and_provider_interval(): void

@@ -8,8 +8,10 @@ use App\Jobs\ScanUploadedFileJob;
 use App\Services\Tenancy\TeamContext;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use RuntimeException;
+use Throwable;
 
 final class UploadDocumentAction
 {
@@ -23,7 +25,7 @@ final class UploadDocumentAction
         // Financial documents now stay private until the queued scan explicitly returns clean.
         $path = $file->storeAs(
             sprintf('tenant-%s/documents', $this->teamContext->teamId()),
-            Str::uuid().'.'.$file->getClientOriginalExtension(),
+            Str::uuid().'.pdf',
             'local',
         );
 
@@ -31,14 +33,26 @@ final class UploadDocumentAction
             throw new RuntimeException('The document could not be saved to private storage.');
         }
 
-        $document = Document::create([
-            'name' => $name,
-            'file_path' => $path,
-            'status' => Document::STATUS_SCANNING,
-        ]);
+        try {
+            $document = Document::create([
+                'name' => $name,
+                'file_path' => $path,
+                'status' => Document::STATUS_SCANNING,
+            ]);
+        } catch (Throwable $exception) {
+            if (! Storage::disk('local')->delete($path)) {
+                Log::critical('Uploaded file could not be removed after its document record failed', [
+                    'path' => $path,
+                    'team_id' => $this->teamContext->teamId(),
+                ]);
+            }
+
+            throw $exception;
+        }
 
         ScanUploadedFileJob::dispatch($path, $document->id, $this->teamContext->teamId())
-            ->onQueue('ocr');
+            ->onQueue('ocr')
+            ->afterCommit();
 
         // Record audit log for upload
         try {

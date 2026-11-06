@@ -21,6 +21,7 @@ class Receipt extends Model
     protected $fillable = [
         'team_id',
         'document_id',
+        'external_id',
         'vendor_name',
         'receipt_number',
         'issue_date',

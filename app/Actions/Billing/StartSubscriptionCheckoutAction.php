@@ -52,6 +52,8 @@ final class StartSubscriptionCheckoutAction
             $inFlight = PaymentAttempt::query()
                 ->where('team_id', $teamId)
                 ->where('plan_id', $plan->id)
+                ->where('provider', $effectiveProvider)
+                ->where('billing_interval', $interval)
                 ->whereIn('status', ['creating', 'pending', 'processing'])
                 ->latest('id')
                 ->first();

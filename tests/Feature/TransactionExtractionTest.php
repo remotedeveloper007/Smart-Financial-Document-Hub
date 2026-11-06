@@ -12,6 +12,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -90,6 +91,41 @@ class TransactionExtractionTest extends TestCase
             'description' => 'Test transaction',
             'amount' => 100.00,
             'reference' => 'REF-1',
+        ]);
+    }
+
+    public function test_reprocessing_preserves_transaction_creation_timestamp(): void
+    {
+        $team = Team::factory()->create();
+        $document = Document::factory()->create(['team_id' => $team->id]);
+        $storeAction = app(StoreTransactionsAction::class);
+        $transaction = [
+            'external_id' => 'stable-external-id',
+            'description' => 'Original description',
+            'amount' => 100.00,
+            'transaction_date' => '2026-11-05',
+            'type' => 'income',
+            'reference' => 'REF-1',
+        ];
+
+        $storeAction->execute($team->id, $document->id, [$transaction]);
+        $originalCreatedAt = now()->subDays(3)->startOfSecond();
+        DB::table('transactions')
+            ->where('document_id', $document->id)
+            ->where('external_id', 'stable-external-id')
+            ->update(['created_at' => $originalCreatedAt]);
+
+        $storeAction->execute($team->id, $document->id, [[
+            ...$transaction,
+            'description' => 'Updated description',
+        ]]);
+
+        $this->assertDatabaseHas('transactions', [
+            'team_id' => $team->id,
+            'document_id' => $document->id,
+            'external_id' => 'stable-external-id',
+            'description' => 'Updated description',
+            'created_at' => $originalCreatedAt->toDateTimeString(),
         ]);
     }
 

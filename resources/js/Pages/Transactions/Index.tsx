@@ -91,7 +91,7 @@ export default function Index({ transactions }: Props) {
                                                         {transaction.description}
                                                     </td>
                                                     <td className="px-6 py-4 text-sm text-gray-900">
-                                                        {transaction.amount.toFixed(2)}
+                                                        {Number(transaction.amount).toFixed(2)}
                                                     </td>
                                                     <td className="px-6 py-4 text-sm text-gray-900">
                                                         {transaction.type}

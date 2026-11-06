@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Actions\Auth\RegisterUserAction;
 use App\Models\Permission;
 use App\Models\User;
 use Illuminate\Auth\Notifications\VerifyEmail;
@@ -56,5 +57,29 @@ class RegistrationTest extends TestCase
             'New Owner should receive manage_ai_settings.',
         );
         $this->assertFalse($user->hasPermission(Permission::PERMISSION_EXPORT_TRANSACTIONS));
+    }
+
+    public function test_repeated_team_names_receive_unique_generated_slugs(): void
+    {
+        $action = app(RegisterUserAction::class);
+        $firstUser = $action->execute([
+            'name' => 'Same Name',
+            'email' => 'first@example.com',
+            'password' => 'password',
+        ]);
+        $secondUser = $action->execute([
+            'name' => 'Same Name',
+            'email' => 'second@example.com',
+            'password' => 'password',
+        ]);
+
+        $firstTeam = $firstUser->team()->firstOrFail();
+        $secondTeam = $secondUser->team()->firstOrFail();
+
+        $this->assertNotSame($firstTeam->slug, $secondTeam->slug);
+        $this->assertSame(2, \App\Models\Team::query()
+            ->whereIn('id', [$firstTeam->id, $secondTeam->id])
+            ->whereIn('slug', [$firstTeam->slug, $secondTeam->slug])
+            ->count());
     }
 }

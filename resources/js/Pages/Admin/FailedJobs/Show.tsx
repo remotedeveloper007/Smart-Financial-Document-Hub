@@ -106,7 +106,7 @@ export default function FailedJobsShow({ job }: Props) {
                         <h3 className="text-lg font-semibold text-white">
                             Exception
                         </h3>
-                        <pre className="mt-4 max-h-[32rem] overflow-auto whitespace-pre-wrap break-words text-xs leading-5 text-slate-200">
+                        <pre className="mt-4 max-h-128 overflow-auto whitespace-pre-wrap wrap-break-word text-xs leading-5 text-slate-200">
                             {job.exception}
                         </pre>
                     </section>
@@ -115,7 +115,7 @@ export default function FailedJobsShow({ job }: Props) {
                         <h3 className="text-lg font-semibold text-slate-900">
                             Job payload
                         </h3>
-                        <pre className="mt-4 max-h-[32rem] overflow-auto whitespace-pre-wrap break-words rounded-md bg-slate-50 p-4 text-xs leading-5 text-slate-700">
+                        <pre className="mt-4 max-h-128 overflow-auto whitespace-pre-wrap wrap-break-word rounded-md bg-slate-50 p-4 text-xs leading-5 text-slate-700">
                             {job.payload}
                         </pre>
                         <p className="mt-3 text-xs text-amber-800">

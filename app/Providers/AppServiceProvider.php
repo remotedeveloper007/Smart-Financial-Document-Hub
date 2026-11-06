@@ -8,6 +8,7 @@ use App\Services\Billing\Providers\PayPalPaymentProvider;
 use App\Services\Billing\Providers\RazorpayPaymentProvider;
 use App\Services\Billing\Providers\StripePaymentProvider;
 use App\Services\Security\ClamAvScanner;
+use App\Services\Tenancy\TeamContext;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -25,6 +26,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(MalwareScanner::class, ClamAvScanner::class);
+        $this->app->scoped(TeamContext::class);
         $this->app->tag([
             StripePaymentProvider::class,
             RazorpayPaymentProvider::class,

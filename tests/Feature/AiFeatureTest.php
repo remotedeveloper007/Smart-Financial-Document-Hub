@@ -12,6 +12,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Crypt;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
@@ -51,34 +52,82 @@ class AiFeatureTest extends TestCase
             'id' => $requestId,
             'team_id' => $team->id,
             'user_id' => $user->id,
-            'input' => 'Hello AI',
             'model' => config('ai.model'),
             'status' => AiRequest::STATUS_QUEUED,
         ]);
+        $this->assertSame('Hello AI', AiRequest::findOrFail($requestId)->input);
+        $storedInput = DB::table('ai_requests')->where('id', $requestId)->value('input');
+        $this->assertIsString($storedInput);
+        $this->assertStringNotContainsString('Hello AI', $storedInput);
 
         Bus::assertDispatched(\App\Jobs\ProcessAiRequestJob::class, function ($job) use ($requestId, $team) {
             return $job->aiRequestId === $requestId && $job->teamId === $team->id;
         });
     }
 
-    public function test_ai_requests_list_is_team_scoped(): void
+    public function test_ai_requests_list_only_shows_the_current_users_requests(): void
     {
         $teamA = Team::factory()->create();
         $teamB = Team::factory()->create();
+        $user = User::factory()->create(['team_id' => $teamA->id]);
+        $otherUser = User::factory()->create(['team_id' => $teamA->id]);
+        $otherTeamUser = User::factory()->create(['team_id' => $teamB->id]);
 
-        AiRequest::factory()->create(['team_id' => $teamA->id]);
-        AiRequest::factory()->create(['team_id' => $teamB->id]);
+        AiRequest::factory()->create([
+            'team_id' => $teamA->id,
+            'user_id' => $user->id,
+            'input' => 'My private request',
+        ]);
+        AiRequest::factory()->create([
+            'team_id' => $teamA->id,
+            'user_id' => $otherUser->id,
+            'input' => 'Another team member private request',
+        ]);
+        AiRequest::factory()->create([
+            'team_id' => $teamB->id,
+            'user_id' => $otherTeamUser->id,
+            'input' => 'Other team private request',
+        ]);
 
         $permission = Permission::create(['name' => 'Use AI', 'slug' => Permission::PERMISSION_USE_AI]);
         $role = Role::create(['team_id' => $teamA->id, 'name' => 'AI User', 'slug' => 'ai-user']);
         $role->permissions()->attach($permission);
 
-        $user = User::factory()->create(['team_id' => $teamA->id]);
         $user->roles()->attach($role);
 
         $response = $this->actingAs($user)->getJson(route('ai.list'));
         $response->assertOk();
         $response->assertJsonCount(1, 'requests.data');
+        $response->assertJsonPath('requests.data.0.input', 'My private request');
+        $response->assertDontSee('Another team member private request');
+        $response->assertDontSee('Other team private request');
+    }
+
+    public function test_existing_ai_prompts_are_encrypted_by_the_data_migration(): void
+    {
+        $team = Team::factory()->create();
+        $user = User::factory()->create(['team_id' => $team->id]);
+        $prompt = 'Synthetic prompt from before encryption';
+        $requestId = DB::table('ai_requests')->insertGetId([
+            'team_id' => $team->id,
+            'user_id' => $user->id,
+            'model' => 'demo-simulator',
+            'input' => $prompt,
+            'status' => AiRequest::STATUS_QUEUED,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $migration = require database_path('migrations/2026_11_05_000003_encrypt_existing_ai_request_inputs.php');
+
+        $migration->up();
+
+        $storedPrompt = DB::table('ai_requests')->where('id', $requestId)->value('input');
+        $this->assertNotSame($prompt, $storedPrompt);
+        $this->assertSame($prompt, Crypt::decryptString($storedPrompt));
+        $this->assertSame($prompt, AiRequest::withoutGlobalScopes()->findOrFail($requestId)->input);
+
+        $migration->down();
+        $this->assertSame($prompt, DB::table('ai_requests')->where('id', $requestId)->value('input'));
     }
 
     public function test_user_without_permission_cannot_access_ai(): void
@@ -155,10 +204,10 @@ class AiFeatureTest extends TestCase
                 'message' => 'The AI provider is not configured for this environment.',
             ]);
 
-        $this->assertDatabaseMissing('ai_requests', [
-            'team_id' => $team->id,
-            'input' => 'Synthetic production prompt',
-        ]);
+        $this->assertSame(
+            0,
+            AiRequest::withoutGlobalScopes()->where('team_id', $team->id)->count(),
+        );
     }
 
     public function test_simulated_provider_rejects_production_execution(): void

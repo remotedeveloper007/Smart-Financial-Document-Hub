@@ -28,7 +28,8 @@ class Team extends Model
     {
         static::creating(function (Team $team): void {
             if (empty($team->slug)) {
-                $team->slug = Str::slug($team->name);
+                $baseSlug = Str::slug($team->name) ?: 'team';
+                $team->slug = $baseSlug.'-'.Str::lower(Str::random(8));
             }
         });
     }

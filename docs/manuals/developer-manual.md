@@ -46,7 +46,7 @@ Getting started (local)
 
    cp .env.example .env
    # Edit .env: DB_CONNECTION=mysql, DB_DATABASE=smart_financial_document_hub, DB_USERNAME, DB_PASSWORD
-   # Optional: set LOG_DB_* for separate logging connection
+   # Fault records use the configured application database connection.
 
 5. Generate app key and run migrations:
 

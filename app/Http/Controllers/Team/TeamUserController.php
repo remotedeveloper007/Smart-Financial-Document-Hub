@@ -33,7 +33,9 @@ final class TeamUserController extends Controller
         $this->authorize('manageUsers', $team);
 
         $members = $team->members()
-            ->with('roles')
+            ->with([
+                'roles' => fn ($query) => $query->where('roles.team_id', $team->id),
+            ])
             ->get()
             ->map(fn (User $user) => $this->serializeMember($user));
 

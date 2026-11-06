@@ -9,9 +9,10 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
+use RuntimeException;
 
 class TallyExportJob implements ShouldQueue
 {
@@ -38,10 +39,15 @@ class TallyExportJob implements ShouldQueue
 
         try {
             $data = $tallyService->exportTransactions((array) $integration->credentials, $this->filters);
+            $path = "tenant-{$this->teamId}/exports/tally/".now()->format('Ymd_His_u')."_integration_{$this->integrationId}_".\Illuminate\Support\Str::uuid().'.json';
+            $written = Storage::disk('local')->put($path, json_encode($data, JSON_THROW_ON_ERROR));
+            if (! $written) {
+                throw new RuntimeException('The Tally export file could not be saved.');
+            }
         } catch (\Throwable $exception) {
             Cache::put($statusKey, [
                 'status' => 'failed',
-                'error' => 'The Tally-compatible export request failed.',
+                'error' => 'The Tally-compatible export could not be completed.',
                 'failed_at' => now()->toIso8601String(),
             ], 3600);
 
@@ -53,9 +59,6 @@ class TallyExportJob implements ShouldQueue
 
             throw $exception;
         }
-
-        $path = "tenant-{$this->teamId}/exports/tally/".now()->format('Ymd_His_u')."_integration_{$this->integrationId}_".\Illuminate\Support\Str::uuid().'.json';
-        Storage::disk('local')->put($path, json_encode($data, JSON_THROW_ON_ERROR));
 
         Cache::put($statusKey, ['status' => 'completed', 'path' => $path, 'completed_at' => now()->toIso8601String()], 86400);
         Log::info('TallyExportJob completed', ['integration_id' => $this->integrationId, 'team_id' => $this->teamId, 'path' => $path]);

@@ -29,10 +29,10 @@ final class ExportTransactionsAction
         foreach ($transactions as $transaction) {
             fputcsv($handle, [
                 $transaction->transaction_date,
-                $transaction->description,
+                $this->escapeSpreadsheetFormula($transaction->description),
                 number_format($transaction->amount, 2, '.', ''),
-                $transaction->type,
-                $transaction->reference,
+                $this->escapeSpreadsheetFormula($transaction->type),
+                $this->escapeSpreadsheetFormula($transaction->reference),
             ]);
         }
 
@@ -62,5 +62,14 @@ final class ExportTransactionsAction
             'Content-Type' => 'text/csv; charset=utf-8',
             'Content-Disposition' => sprintf('attachment; filename="%s"', $filename),
         ]);
+    }
+
+    private function escapeSpreadsheetFormula(?string $value): ?string
+    {
+        if ($value !== null && preg_match('/^[\x00-\x20\xEF\xBB\xBF]*[=+\-@]/', $value) === 1) {
+            return "'".$value;
+        }
+
+        return $value;
     }
 }

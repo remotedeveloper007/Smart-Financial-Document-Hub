@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Actions\Documents\StoreReceiptsAction;
+use App\Models\Document;
 use App\Models\Permission;
 use App\Models\Receipt;
 use App\Models\Role;
@@ -59,5 +61,62 @@ class ReceiptFeatureTest extends TestCase
         $response = $this->actingAs($user)->get(route('receipts.page'));
 
         $response->assertForbidden();
+    }
+
+    public function test_receipt_storage_persists_and_updates_records_with_external_ids(): void
+    {
+        $team = Team::factory()->create();
+        $document = Document::factory()->create(['team_id' => $team->id]);
+        $action = app(StoreReceiptsAction::class);
+
+        $action->execute($team->id, $document->id, [[
+            'external_id' => 'receipt-1',
+            'vendor_name' => 'First Vendor',
+            'receipt_number' => 'R-100',
+            'issue_date' => '2026-11-05',
+            'total_amount' => 100,
+            'currency' => 'INR',
+            'status' => 'paid',
+            'reference' => 'first import',
+        ]]);
+        $action->execute($team->id, $document->id, [[
+            'external_id' => 'receipt-1',
+            'vendor_name' => 'Updated Vendor',
+            'receipt_number' => 'R-100',
+            'issue_date' => '2026-11-05',
+            'total_amount' => 125,
+            'currency' => 'INR',
+            'status' => 'paid',
+            'reference' => 'retry',
+        ]]);
+
+        $this->assertDatabaseCount('receipts', 1);
+        $this->assertDatabaseHas('receipts', [
+            'team_id' => $team->id,
+            'document_id' => $document->id,
+            'external_id' => 'receipt-1',
+            'vendor_name' => 'Updated Vendor',
+            'total_amount' => 125,
+            'reference' => 'retry',
+        ]);
+    }
+
+    public function test_receipt_storage_accepts_missing_external_ids(): void
+    {
+        $team = Team::factory()->create();
+        $document = Document::factory()->create(['team_id' => $team->id]);
+
+        app(StoreReceiptsAction::class)->execute($team->id, $document->id, [
+            ['vendor_name' => 'Vendor One', 'receipt_number' => 'R-101'],
+            ['vendor_name' => 'Vendor Two', 'receipt_number' => 'R-102'],
+        ]);
+
+        $this->assertDatabaseCount('receipts', 2);
+        $this->assertDatabaseHas('receipts', [
+            'team_id' => $team->id,
+            'document_id' => $document->id,
+            'external_id' => null,
+            'vendor_name' => 'Vendor One',
+        ]);
     }
 }

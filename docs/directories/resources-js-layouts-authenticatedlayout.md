@@ -21,6 +21,7 @@ This file draws the shared page frame for signed-in users. It contains the deskt
 - `header`: optional page title or page actions.
 - `children`: the page content.
 - Inertia props: signed-in user, permission slugs, and the admin capability.
+- Inertia `tenant` props: the active team and teams the user may select.
 - Current route name: used to mark the active page.
 
 ### Output
@@ -30,6 +31,7 @@ This file draws the shared page frame for signed-in users. It contains the deskt
 - A navigation header that remains at the top while the page scrolls.
 - A sticky optional page-title header on desktop, stacked below the navigation bar.
 - A light or dark color theme.
+- A team selector for users who belong to more than one team.
 - The page header and page content.
 
 ## Step-by-step behavior
@@ -49,6 +51,8 @@ This file draws the shared page frame for signed-in users. It contains the deskt
 13. The desktop bar and mobile navigation use `sticky top-0` with a higher stacking order so they remain visible during page scrolling.
 14. The optional page-title header sticks below the desktop bar at `top-16`. It stays in normal document flow on small screens so an expanded mobile menu is not covered by the title.
 15. The existing small-screen menu and its links are kept. Its open/close button now also reports its state to assistive technology.
+16. `TeamSwitcher` is shown only when the server shares at least two permitted teams. It appears in both desktop and mobile headers.
+17. Choosing a team sends its ID to the authenticated `team.active.update` route. The server verifies membership and saves the selection in the session; Inertia then receives fresh page props for that team.
 
 ## Important component responsibilities
 
@@ -56,6 +60,7 @@ This file draws the shared page frame for signed-in users. It contains the deskt
 - `SidebarLink`: keeps link behavior, active-page feedback, and collapsed accessibility together.
 - `NavigationSection`: keeps group headings readable in both sidebar widths.
 - `AppearanceToggle`: draws a controlled theme button; it does not make authorization decisions.
+- `TeamSwitcher`: displays the current team and asks the server to switch to a different team. It does not decide which teams are allowed.
 - `Authenticated`: reads the application state and arranges the components.
 
 ## Usage
@@ -79,3 +84,6 @@ Check TypeScript and create the production frontend bundle:
 ```bash
 npm run build
 ```
+
+The `AuthenticatedLayout.test.tsx` test also checks that selecting a team sends
+the selected ID to the named switch route.

@@ -21,7 +21,7 @@ final class DocumentController extends Controller
 
     public function index(TeamContext $teamContext): JsonResponse
     {
-        $this->authorize('create', Document::class);
+        $this->authorize('viewAny', Document::class);
 
         $documents = Document::query()
             ->orderByDesc('created_at')

@@ -17,7 +17,10 @@ class InvoiceFeatureTest extends TestCase
     public function test_user_with_invoice_permission_can_view_invoices_page(): void
     {
         $team = Team::factory()->create();
-        $permission = Permission::create(['name' => 'View invoices', 'slug' => Permission::PERMISSION_VIEW_INVOICES]);
+        $permission = Permission::firstOrCreate(
+            ['slug' => Permission::PERMISSION_VIEW_INVOICES],
+            ['name' => 'View invoices'],
+        );
         $role = Role::create(['team_id' => $team->id, 'name' => 'Invoice Viewer', 'slug' => 'invoice-viewer']);
         $role->permissions()->attach($permission);
 
@@ -38,7 +41,10 @@ class InvoiceFeatureTest extends TestCase
         Invoice::factory()->create(['team_id' => $teamA->id]);
         Invoice::factory()->create(['team_id' => $teamB->id]);
 
-        $permission = Permission::create(['name' => 'View invoices', 'slug' => Permission::PERMISSION_VIEW_INVOICES]);
+        $permission = Permission::firstOrCreate(
+            ['slug' => Permission::PERMISSION_VIEW_INVOICES],
+            ['name' => 'View invoices'],
+        );
         $role = Role::create(['team_id' => $teamA->id, 'name' => 'Invoice Viewer', 'slug' => 'invoice-viewer']);
         $role->permissions()->attach($permission);
 

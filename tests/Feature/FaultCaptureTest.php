@@ -19,19 +19,28 @@ class FaultCaptureTest extends TestCase
             throw new \RuntimeException('unit test fault');
         });
 
-        $logFile = storage_path('logs/fault_capture_persistent.log');
-        if (file_exists($logFile)) {
-            @unlink($logFile);
-        }
-
         $response = $this->actingAs($user)->get('/__test/fault');
 
         $response->assertStatus(500);
 
-        $laravelLog = storage_path('logs/laravel.log');
-        $this->assertFileExists($laravelLog);
+        $this->assertDatabaseCount('fault_logs', 1);
+        $this->assertDatabaseHas('fault_logs', [
+            'message' => 'unit test fault',
+            'user_id' => $user->id,
+        ]);
 
-        $contents = file_get_contents($laravelLog);
-        $this->assertStringContainsString('unit test fault', $contents);
+    }
+
+    public function test_fault_capture_redacts_secret_values(): void
+    {
+        Route::get('/__test/sensitive-fault', function () {
+            throw new \RuntimeException('Provider failed with api_key=secret-value');
+        });
+
+        $this->get('/__test/sensitive-fault')->assertStatus(500);
+
+        $this->assertDatabaseHas('fault_logs', [
+            'message' => 'Provider failed with api_key=[REDACTED]',
+        ]);
     }
 }

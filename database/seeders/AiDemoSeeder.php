@@ -73,19 +73,37 @@ final class AiDemoSeeder extends Seeder
         ];
 
         foreach ($demoRequests as $request) {
-            AiRequest::withoutGlobalScopes()->updateOrCreate(
-                [
-                    'team_id' => $team->id,
-                    'user_id' => $user->id,
-                    'input' => $request['input'],
-                ],
-                [
-                    'model' => config('ai.model', 'demo-simulator'),
-                    'response' => $request['response'],
-                    'status' => $request['status'],
-                    'error_message' => $request['error_message'],
-                ],
-            );
+            $matches = AiRequest::withoutGlobalScopes()
+                ->where('team_id', $team->id)
+                ->where('user_id', $user->id)
+                ->where('model', config('ai.model', 'demo-simulator'))
+                ->where('status', $request['status'])
+                ->get()
+                ->filter(fn (AiRequest $aiRequest): bool => $aiRequest->input === $request['input'])
+                ->sortBy('id')
+                ->values();
+
+            $attributes = [
+                'model' => config('ai.model', 'demo-simulator'),
+                'response' => $request['response'],
+                'status' => $request['status'],
+                'error_message' => $request['error_message'],
+            ];
+            $existing = $matches->first();
+
+            if ($existing) {
+                $existing->fill($attributes)->save();
+                $matches->skip(1)->each->delete();
+
+                continue;
+            }
+
+            AiRequest::create([
+                'team_id' => $team->id,
+                'user_id' => $user->id,
+                'input' => $request['input'],
+                ...$attributes,
+            ]);
         }
     }
 }

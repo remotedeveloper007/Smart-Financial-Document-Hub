@@ -66,6 +66,7 @@ final class AiController extends Controller
 
         $requests = AiRequest::query()
             ->where('team_id', $teamContext->teamId())
+            ->where('user_id', request()->user()->id)
             ->orderByDesc('created_at')
             ->paginate(20);
 

@@ -22,6 +22,7 @@ class AiRequest extends Model
     public const STATUS_FAILED = 'failed';
 
     protected $casts = [
+        'input' => 'encrypted',
         'response' => AsArrayObject::class,
     ];
 

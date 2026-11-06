@@ -11,10 +11,16 @@ final class StoreTransactionsAction
     {
         DB::transaction(function () use ($teamId, $documentId, $transactions) {
             foreach ($transactions as $transaction) {
-                DB::table('transactions')->updateOrInsert([
+                $identity = [
+                    'team_id' => $teamId,
                     'document_id' => $documentId,
                     'external_id' => $transaction['external_id'],
-                ], [
+                ];
+                $createdAt = DB::table('transactions')
+                    ->where($identity)
+                    ->value('created_at') ?? now();
+
+                DB::table('transactions')->updateOrInsert($identity, [
                     'team_id' => $teamId,
                     'description' => $transaction['description'],
                     'amount' => $transaction['amount'],
@@ -22,7 +28,7 @@ final class StoreTransactionsAction
                     'type' => $transaction['type'],
                     'reference' => $transaction['reference'],
                     'updated_at' => now(),
-                    'created_at' => now(),
+                    'created_at' => $createdAt,
                 ]);
             }
         });

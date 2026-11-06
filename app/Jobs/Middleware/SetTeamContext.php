@@ -3,6 +3,7 @@
 namespace App\Jobs\Middleware;
 
 use App\Models\Team;
+use App\Exceptions\TenantNotResolvedException;
 use App\Services\Tenancy\TeamContext;
 
 final class SetTeamContext
@@ -34,11 +35,17 @@ final class SetTeamContext
         if ($teamId !== null) {
             $team = Team::find($teamId);
 
-            if ($team !== null) {
-                $teamContext->setTeam($team);
+            if ($team === null) {
+                throw new TenantNotResolvedException();
             }
+
+            $teamContext->setTeam($team);
         }
 
-        $next($job);
+        try {
+            $next($job);
+        } finally {
+            $teamContext->clearTeam();
+        }
     }
 }

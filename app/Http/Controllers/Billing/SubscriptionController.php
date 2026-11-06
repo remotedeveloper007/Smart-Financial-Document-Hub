@@ -22,6 +22,8 @@ final class SubscriptionController extends Controller
 {
     public function page(Request $request, TeamContext $teamContext, PaymentProviderManager $providers): Response
     {
+        $this->authorize('manage_billing');
+
         $teamId = $teamContext->teamId();
 
         return Inertia::render('Billing/Plans', [

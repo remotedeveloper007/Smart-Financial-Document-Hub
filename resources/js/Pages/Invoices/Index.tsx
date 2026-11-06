@@ -77,7 +77,7 @@ export default function Index() {
                                                     <td className="px-6 py-4 text-sm text-gray-900">{invoice.issue_date}</td>
                                                     <td className="px-6 py-4 text-sm text-gray-900">{invoice.vendor_name}</td>
                                                     <td className="px-6 py-4 text-sm text-gray-900">{invoice.invoice_number}</td>
-                                                    <td className="px-6 py-4 text-sm text-gray-900">{invoice.total_amount.toFixed(2)} {invoice.currency}</td>
+                                                    <td className="px-6 py-4 text-sm text-gray-900">{Number(invoice.total_amount).toFixed(2)} {invoice.currency}</td>
                                                     <td className="px-6 py-4 text-sm text-gray-900">{invoice.status}</td>
                                                     <td className="px-6 py-4 text-sm text-gray-900">{invoice.reference ?? '—'}</td>
                                                 </tr>

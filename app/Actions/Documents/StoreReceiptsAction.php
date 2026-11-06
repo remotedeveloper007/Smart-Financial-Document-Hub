@@ -10,44 +10,47 @@ final class StoreReceiptsAction
     {
         DB::transaction(function () use ($teamId, $documentId, $receipts) {
             foreach ($receipts as $receipt) {
-                $recordExists = DB::table('receipts')
-                    ->where('document_id', $documentId)
-                    ->where('external_id', $receipt['external_id'])
-                    ->exists();
+                $externalId = $receipt['external_id'] ?? null;
+                $values = [
+                    'team_id' => $teamId,
+                    'document_id' => $documentId,
+                    'external_id' => $externalId,
+                    'vendor_name' => $receipt['vendor_name'] ?? null,
+                    'receipt_number' => $receipt['receipt_number'] ?? null,
+                    'issue_date' => $receipt['issue_date'] ?? null,
+                    'total_amount' => $receipt['total_amount'] ?? 0,
+                    'currency' => $receipt['currency'] ?? null,
+                    'status' => $receipt['status'] ?? 'unpaid',
+                    'reference' => $receipt['reference'] ?? null,
+                    'updated_at' => now(),
+                ];
 
-                if ($recordExists) {
-                    DB::table('receipts')
+                if ($externalId !== null && $externalId !== '') {
+                    $existingReceipt = DB::table('receipts')
+                        ->where('team_id', $teamId)
                         ->where('document_id', $documentId)
-                        ->where('external_id', $receipt['external_id'])
-                        ->update([
-                            'team_id' => $teamId,
-                            'vendor_name' => $receipt['vendor_name'],
-                            'receipt_number' => $receipt['receipt_number'],
-                            'issue_date' => $receipt['issue_date'],
-                            'total_amount' => $receipt['total_amount'],
-                            'currency' => $receipt['currency'],
-                            'status' => $receipt['status'],
-                            'reference' => $receipt['reference'],
-                            'updated_at' => now(),
-                        ]);
+                        ->where('external_id', $externalId)
+                        ->exists();
+
+                    if ($existingReceipt) {
+                        DB::table('receipts')
+                            ->where('team_id', $teamId)
+                            ->where('document_id', $documentId)
+                            ->where('external_id', $externalId)
+                            ->update($values);
+
+                        continue;
+                    }
+
+                    DB::table('receipts')
+                        ->insert($values + ['created_at' => now()]);
 
                     continue;
                 }
 
-                DB::table('receipts')->insert([
-                    'team_id' => $teamId,
-                    'document_id' => $documentId,
-                    'external_id' => $receipt['external_id'],
-                    'vendor_name' => $receipt['vendor_name'],
-                    'receipt_number' => $receipt['receipt_number'],
-                    'issue_date' => $receipt['issue_date'],
-                    'total_amount' => $receipt['total_amount'],
-                    'currency' => $receipt['currency'],
-                    'status' => $receipt['status'],
-                    'reference' => $receipt['reference'],
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
+                DB::table('receipts')->insert(
+                    $values + ['created_at' => now()],
+                );
             }
         });
     }

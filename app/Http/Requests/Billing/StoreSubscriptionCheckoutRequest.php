@@ -19,7 +19,7 @@ final class StoreSubscriptionCheckoutRequest extends FormRequest
 
     public function authorize(): bool
     {
-        return true;
+        return $this->user()?->can('manage_billing') ?? false;
     }
 
     /**

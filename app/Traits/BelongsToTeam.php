@@ -4,6 +4,7 @@ namespace App\Traits;
 
 use App\Scopes\BelongsToTeamScope;
 use App\Models\Team;
+use App\Exceptions\TenantNotResolvedException;
 use App\Services\Tenancy\TeamContext;
 use Illuminate\Database\Eloquent\Model;
 

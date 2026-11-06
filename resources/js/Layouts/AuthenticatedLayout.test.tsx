@@ -3,8 +3,13 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import Authenticated from './AuthenticatedLayout';
 
-const { pageState } = vi.hoisted(() => ({
-    pageState: { isPlatformAdmin: false },
+const { pageState, inertiaRouter } = vi.hoisted(() => ({
+    pageState: {
+        isPlatformAdmin: false,
+        teams: [] as { id: number; name: string }[],
+        activeTeam: null as { id: number; name: string } | null,
+    },
+    inertiaRouter: { post: vi.fn() },
 }));
 
 vi.mock('@inertiajs/react', () => ({
@@ -16,6 +21,7 @@ vi.mock('@inertiajs/react', () => ({
         ...props
     }: PropsWithChildren<Record<string, unknown> & { href: string; as?: string }>) =>
         React.createElement(as === 'button' ? 'button' : 'a', { href, ...props }, children),
+    router: inertiaRouter,
     usePage: () => ({
         props: {
             auth: {
@@ -31,6 +37,10 @@ vi.mock('@inertiajs/react', () => ({
                 permissions: pageState.isPlatformAdmin
                     ? ['manage_users', 'create_documents', 'view_transactions', 'view_invoices', 'view_receipts', 'view_contracts', 'manage_integrations', 'manage_billing', 'use_ai']
                     : ['view_transactions'],
+            },
+            tenant: {
+                teams: pageState.teams,
+                activeTeam: pageState.activeTeam,
             },
         },
     }),
@@ -64,6 +74,9 @@ let activeRoute = 'dashboard';
 beforeEach(() => {
     activeRoute = 'dashboard';
     pageState.isPlatformAdmin = false;
+    pageState.teams = [];
+    pageState.activeTeam = null;
+    inertiaRouter.post.mockReset();
     localStorage.clear();
     document.documentElement.removeAttribute('data-theme');
     vi.stubGlobal('route', (name?: string) => {
@@ -149,6 +162,30 @@ test('restores saved sidebar and theme preferences', () => {
     expect(
         screen.getAllByRole('button', { name: 'Switch to light mode' }),
     ).toHaveLength(2);
+});
+
+test('switches to a team selected from the workspace header', () => {
+    pageState.teams = [
+        { id: 1, name: 'First Team' },
+        { id: 2, name: 'Second Team' },
+    ];
+    pageState.activeTeam = pageState.teams[0];
+
+    render(
+        <Authenticated>
+            <p>Page content</p>
+        </Authenticated>,
+    );
+
+    fireEvent.change(screen.getAllByRole('combobox', { name: 'Active team' })[0], {
+        target: { value: '2' },
+    });
+
+    expect(inertiaRouter.post).toHaveBeenCalledWith(
+        '/team.active.update',
+        { team_id: 2 },
+        { preserveScroll: true },
+    );
 });
 
 test('platform administrators only see platform operations navigation', () => {

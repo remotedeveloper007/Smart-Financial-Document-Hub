@@ -8,6 +8,11 @@ use App\Models\User;
 
 class DocumentPolicy
 {
+    public function viewAny(User $user): bool
+    {
+        return $user->hasPermission(Permission::PERMISSION_VIEW_DOCUMENTS);
+    }
+
     public function view(User $user, Document $document): bool
     {
         return $user->belongsToTeam($document->team) && $user->hasPermission(Permission::PERMISSION_VIEW_DOCUMENTS);

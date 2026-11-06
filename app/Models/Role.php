@@ -82,7 +82,6 @@ class Role extends Model
                 Permission::PERMISSION_VIEW_TRANSACTIONS,
                 Permission::PERMISSION_EXPORT_DOCUMENTS,
                 Permission::PERMISSION_EXPORT_TRANSACTIONS,
-                Permission::PERMISSION_MANAGE_BILLING,
             ],
             'Viewer' => [
                 Permission::PERMISSION_VIEW_DOCUMENTS,

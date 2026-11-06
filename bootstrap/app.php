@@ -16,15 +16,24 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: ['billing/webhooks/*']);
 
         $middleware->web(append: [
+            ResolveTeam::class,
             \App\Http\Middleware\HandleInertiaRequests::class,
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
             \App\Http\Middleware\SecurityHeaders::class,
         ]);
 
-        $middleware->append(ResolveTeam::class);
-        $middleware->append(\App\Http\Middleware\CaptureFaults::class);
+        $middleware->appendToPriorityList(
+            \Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests::class,
+            ResolveTeam::class,
+        );
+
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->report(function (\Throwable $exception): void {
+            app(\App\Services\Diagnostics\FaultCaptureService::class)
+                ->capture($exception, request());
+        });
+
         $exceptions->shouldRenderJsonWhen(
             // Previous behavior only recognized API paths and redirected JSON requests sent to web routes.
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),

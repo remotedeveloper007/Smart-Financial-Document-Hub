@@ -20,6 +20,8 @@ class AiRequestPolicy
 
     public function view(User $user, AiRequest $request): bool
     {
-        return $user->belongsToTeam($request->team) && $user->hasPermission(Permission::PERMISSION_USE_AI);
+        return $user->belongsToTeam($request->team)
+            && $user->hasPermission(Permission::PERMISSION_USE_AI)
+            && $request->user_id === $user->id;
     }
 }

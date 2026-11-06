@@ -73,6 +73,34 @@ class TallyExportJobTest extends TestCase
         $this->assertSame([], Storage::disk('local')->allFiles("tenant-{$team->id}/exports/tally"));
     }
 
+    public function test_failed_storage_write_is_not_reported_as_completed(): void
+    {
+        Cache::flush();
+        Http::fake([
+            'https://tally.example.test/api/transactions/export*' => Http::response([
+                ['date' => '2026-10-01', 'description' => 'Office supplies', 'amount' => '25.75'],
+            ], 200),
+        ]);
+        [$team, , $integration] = $this->createTallyIntegration();
+
+        $disk = \Mockery::mock();
+        $disk->shouldReceive('put')->once()->andReturn(false);
+        Storage::shouldReceive('disk')->with('local')->once()->andReturn($disk);
+
+        try {
+            (new TallyExportJob($integration->id, $team->id))
+                ->handle(app(\App\Services\Integrations\TallyService::class));
+            $this->fail('A failed storage write must fail the queued export job.');
+        } catch (\RuntimeException $exception) {
+            $this->assertSame('The Tally export file could not be saved.', $exception->getMessage());
+        }
+
+        $this->assertSame(
+            'failed',
+            Cache::get("integration_export_status:team:{$team->id}:integration:{$integration->id}")['status'],
+        );
+    }
+
     private function createTallyIntegration(): array
     {
         $team = Team::factory()->create();
